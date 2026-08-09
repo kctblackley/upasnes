@@ -17,7 +17,6 @@
 #define NUM_BPP 3
 #define MAX_TILES 4096
 
-class DMAController;
 class Ricoh5A22;
 class Bus;
 
@@ -94,7 +93,6 @@ public:
 	Word v_time_target = 0;
 	Byte irq_mode = 0;
 	bool irq_condition_met = false;
-
 	bool frame_finished = false;
 
 	void call_irq();
@@ -163,6 +161,24 @@ public:
 		vcounter = 0;
 		vblank = false;
 		hblank = false;
+
+		forced_blank = true;
+		brightness = 0;
+		field = false;
+		counter_latch = false;
+		bg_mode = 0;
+		bg3_priority = false;
+
+		bg_ofs_latch = 0;
+		vram.vmadd = 0;
+		vram.address_increment = 1;
+		vram.address_remapping = 0;
+
+		oam.oamadd = 0;
+		oam.reload = 0;
+
+		cgram.cgram_address = 0;
+		cgram.cgram_byte = 0;
 	}
 
 	void initialise() override {
@@ -419,9 +435,9 @@ public:
 	}
 
 	void set_bghofs(BG& bg, Byte value) {
-		bg.bghofs = (value << 8) | (bg_ofs_latch & ~7) | (bg_hofs_latch & 7);
+		bg.bghofs = (value << 8) | (bg_ofs_latch & ~7) | (bg.hofs_latch & 7);
 		bg_ofs_latch = value;
-		bg_hofs_latch = value;
+		bg.hofs_latch = value;
 	}
 
 	void set_bgvofs(BG& bg, Byte value) {
@@ -682,9 +698,10 @@ public:
 					update_object(oam.oamadd - 1, oam.latch);
 					update_object(oam.oamadd, value);
 				}
-				if (oam.oamadd >= 0x200 && oam.oamadd < 0x220) {
-					oam.data[0x200 + (oam.oamadd - 0x200)] = value;
-					update_object(0x200 + (oam.oamadd - 0x200), value);
+				if (oam.oamadd >= 0x200) {
+					Word idx = 0x200 + ((oam.oamadd - 0x200) & 0x1F);
+					oam.data[idx] = value;
+					update_object(idx, value);
 				}
 				oam.oamadd = (oam.oamadd + 1) & 0x3FF;
 			}
@@ -761,12 +778,10 @@ public:
 		return;
 	}
 
-	// Required by HBlank DMA (DMAController stores pointer to the PPU)
 	bool in_hblank() {
 		return hblank;
 	}
 
-	void connect_dma_controller(DMAController* dma_controller);
 	void connect_bus(Bus* bus) {
 		this->bus = bus;
 	}
@@ -824,7 +839,6 @@ private:
 	bool vblank = false;
 	bool hblank = false;
 
-	DMAController* dma_controller = nullptr;
 	Bus* bus = nullptr;
 
 	bool field = false;
@@ -842,7 +856,6 @@ private:
 	BG bg1, bg2, bg3, bg4; // stores attributes relevant to bg layers
 
 	Byte bg_ofs_latch = 0x00;
-	Byte bg_hofs_latch = 0x00;
 	ObjectLayer obj; // stores attributes relevant to obj layer
 	ColorMathLayer col;
 	Window window1;

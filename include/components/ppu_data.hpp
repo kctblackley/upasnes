@@ -207,6 +207,9 @@ struct BG {
 	Word bghofs = 0x00;
 	Word bgvofs = 0x00;
 
+	// Per-background low-byte latch for HOFS bits 0-2 (see PPU::set_bghofs)
+	Byte hofs_latch = 0x00;
+
 	// Below enable BG on the screens (must be enabled on at least one to be visible)
 	bool sub_screen = false;
 	bool main_screen = false;

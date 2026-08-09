@@ -58,7 +58,7 @@ public:
 	Word DiscardBuffer = 0;
 
 	bool condition = 0;
-
+	bool waiting = false;
 	bool Branching = 0;
 	bool BoundaryCrossed = 0;
 

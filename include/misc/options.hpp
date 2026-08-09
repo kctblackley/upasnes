@@ -7,6 +7,7 @@ constexpr bool SEE_TOTAL_PASS_ONLY = false;
 constexpr bool SINGLE_TEST = false; //true;
 constexpr bool DEBUG_WINDOW = false;
 constexpr bool SHOW_LOGS = false;
+constexpr bool SHOW_SPC_LOGS = false;
 constexpr bool SHOW_SDSP_LOGS = false;
 
 // JUST FOR ME!

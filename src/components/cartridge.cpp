@@ -24,12 +24,22 @@ CartridgeHeader parse_header(const std::vector<Byte>& rom, size_t offset) {
 	return h;
 }
 
-int score(const MapperCandidate& candidate, size_t rom_size) {
+uint16_t calculate_checksum(const std::vector<Byte>& rom)
+{
+    uint32_t sum = 0;
+
+    for (auto b : rom)
+        sum += b;
+
+    return sum & 0xFFFF;
+}
+
+int score(const MapperCandidate& candidate, size_t rom_size, const std::vector<Byte>& rom) {
 	int score = 0;
 	CartridgeHeader h = candidate.h;
 
-	if ((h.checksum ^ h.complement) == 0xFFFF) {
-		score += 8;
+	if (calculate_checksum(rom) == h.checksum) {
+    	score += 20;
 	}
 
 	if ((h.map_mode >= 0x20 && h.map_mode <= 0x25) || (h.map_mode >= 0x30 && h.map_mode <= 0x35)) {
@@ -102,6 +112,18 @@ int score(const MapperCandidate& candidate, size_t rom_size) {
 		break;
 	default:
 		break;
+	}
+
+	if (candidate.mapper == MapperType::LoROM)
+	{
+	    if (h.map_mode == 0x21 || h.map_mode == 0x31)
+	        score -= 8;
+	}
+
+	if (candidate.mapper == MapperType::HiROM)
+	{
+	    if (h.map_mode == 0x20 || h.map_mode == 0x30)
+	        score -= 8;
 	}
 
 	return score;

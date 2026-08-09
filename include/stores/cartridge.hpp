@@ -40,7 +40,7 @@ struct MapperCandidate {
 };
 
 CartridgeHeader parse_header(const std::vector<Byte>& rom, size_t offset);
-int score(const MapperCandidate& candidate, size_t rom_size);
+int score(const MapperCandidate& candidate, size_t rom_size, const std::vector<Byte>& rom);
 
 class Cartridge : public Store {
 public:
@@ -72,7 +72,16 @@ public:
 	}
 
 	CycleCount penalty() override {
-		return penalty_value;
+		bool memory2 = (address_bus.bank >= 0x80 && address_bus.bank <= 0xBF &&
+						address_bus.offset >= 0x8000) || (address_bus.bank >= 0xC0);
+		if (memory2 && fastrom_enabled && is_fastrom_cartridge) {
+			return 0;
+		}
+		return 2;
+	}
+
+	void set_fastrom(bool fastrom_enabled) {
+		this->fastrom_enabled = fastrom_enabled;
 	}
 
 	MapperCandidate make_candidate(const std::vector<Byte>& rom, MapperType mapper, size_t offset) {
@@ -82,7 +91,7 @@ public:
 	        0
 	    };
 
-	    c.score = score(c, rom.size());
+	    c.score = score(c, rom.size(), rom);
 
 	    return c;
 	}
@@ -129,7 +138,7 @@ public:
 	    }
 
 		for (auto& c : candidates) {
-			c.score = score(c, rom.size());
+			c.score = score(c, rom.size(), rom);
 		}
 
 		auto best = std::max_element(
@@ -151,7 +160,7 @@ public:
 		    try_add(MapperType::ExHiROM, 0x40ffc0);
 
 		    for (auto& c : candidates) {
-		        c.score = score(c, rom.size());
+		        c.score = score(c, rom.size(), rom);
 		    }
 
 		    best = std::max_element(
@@ -187,9 +196,7 @@ public:
 		    mapper
 		);
 
-		fast_rom = (header.map_mode & 0x10) != 0;
-		penalty_value = fast_rom ? 0 : 2;
-
+		is_fastrom_cartridge = (header.map_mode & 0x10) != 0;
 		std::cout << header.title << "\n";
 	}
 
@@ -199,7 +206,8 @@ public:
 
 private:
 	Byte mapping; // Stores cartridge's mapping
-	bool fast_rom = false;
+	bool is_fastrom_cartridge = false;
+	bool fastrom_enabled = false;
 	CycleCount penalty_value = 0;
 	CartridgeHeader header;
 	

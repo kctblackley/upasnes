@@ -2,17 +2,23 @@
 #include "spc_700.hpp"
 #include "ricoh_5a22.hpp"
 #include "ppu.hpp"
-#include "dma_controller.hpp"
 #include "cartridge.hpp"
+
+#define WRAM_REFRESH_PAUSE_CYCLES 40
 
 Bus::Bus() {
 	open_bus = std::make_unique<OpenBus>();
 	wram = std::make_unique<WRAM>();
 	cartridge = std::make_unique<Cartridge>();
+	dma = std::make_unique<DMA>();
 }
 
 void Bus::connect_cpu_to_cartridge(Ricoh5A22* cpu) {
 	cartridge->connect_cpu(cpu);
+}
+
+void Bus::wram_refresh_pause() {
+	cpu->add_cycles(WRAM_REFRESH_PAUSE_CYCLES);
 }
 
 bool Bus::is_cartridge_mapped(Address addr) {
@@ -31,6 +37,7 @@ Bus::~Bus() = default;
 
 void Bus::connect_cpu(Ricoh5A22* cpu) {
 	this->cpu = cpu;
+	cpu->connect_dma(dma.get());
 }
 
 void Bus::connect_apu(SPC700* apu) {
@@ -41,16 +48,12 @@ void Bus::connect_ppu(PPU* ppu) {
 	this->ppu = ppu;
 }
 
-void Bus::connect_dma_controller(DMAController* dma_controller) {
-	this->dma_controller = dma_controller;
-}
-
 void Bus::set_wait_callback(WaitCallback callback) {
 	this->callback = callback;
 }
 
 Store* Bus::system_area(SNESAddress address) {
-	if (address.offset >= WRAM_SECTION && address.offset <= OPEN_BUS_SECTION) {
+	if (address.offset >= WRAM_SECTION && address.offset < OPEN_BUS_SECTION) {
 		return wram.get();
 	}
 	if (address.offset >= OPEN_BUS_SECTION && address.offset < PPU_PORTS_SECTION) {
@@ -79,11 +82,14 @@ Component* Bus::system_area_component(SNESAddress address) {
 	if (address.offset >= APU_PORTS_SECTION && address.offset < WRAM_ACCESS_SECTION) {
 		return apu; // Just stubbed for now, to be finished later!
 	}
-	if (address.offset == 0x420b || address.offset == 0x420c || (address.offset >= CPU_DMA_PORTS_SECTION && address.offset < CPU_DMA_PORTS_ENDING)) {
-		return dma_controller;
-	}
 	if (address.offset >= CPU_PORTS_SECTION && address.offset < CPU_DMA_PORTS_SECTION) {
+		if (address.offset == 0x420B || address.offset == 0x420C) {
+			return dma.get();
+		}
 		return cpu; // Not all ports have been created just yet 
+	}
+	if (address.offset >= CPU_PORTS_NON_PENALTY_SECTION && address.offset < CPU_DMA_PORTS_ENDING) {
+		return dma.get();
 	}
 	return nullptr;
 }

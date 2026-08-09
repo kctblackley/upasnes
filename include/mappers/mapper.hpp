@@ -13,6 +13,13 @@ public:
 
 	void load_rom(std::vector<Byte> rom) {
 		this->rom = rom;
+
+		// Non-power-of-two ROM support...
+		while (!std::has_single_bit(this->rom.size())) {
+	        size_t chunk = this->rom.size() & -this->rom.size();
+	        std::cout << "REPADDED ROM\n";
+	        this->rom.insert(this->rom.end(), this->rom.end() - chunk, this->rom.end());
+	    }
 	}
 
 	void load_sram(Byte ram_size) {

@@ -6,6 +6,7 @@
 #include "ricoh_5a22.hpp"
 #include "ricoh_5a22_opcode_info.hpp"
 #include "bus.hpp"
+#include "dma.hpp"
 
 namespace {
 	std::string byte_hex(Byte b) {
@@ -42,6 +43,7 @@ TickCount Ricoh5A22::get_tick() {
 void Ricoh5A22::poll_interrupts() {
 	if (nmi_line) {
 		was_interrupt = false;
+		waiting = false;
 		nmi_line = false;
 		BufferOpCode = OPCODE_NMI;
 		instruction_cycle = 0;
@@ -51,6 +53,7 @@ void Ricoh5A22::poll_interrupts() {
 		BufferOpCode = OPCODE_IRQ;
 		instruction_cycle = 0;
 		was_interrupt = true;
+		waiting = false;
 		interrupt_type = true;
 	}
 }
@@ -163,6 +166,11 @@ void Ricoh5A22::reset() {
 	return;
 }
 
+void Ricoh5A22::connect_dma(DMA* dma) {
+	this->dma = dma;
+	this->dma->connect_bus(bus);
+}
+
 void Ricoh5A22::initialise() {
 	uint8_t lo = read(0x00FFFC);
 	uint8_t hi = read(0x00FFFD);
@@ -224,4 +232,8 @@ Byte Ricoh5A22::test_peek(Address addr) {
 
 void Ricoh5A22::test_poke(Address addr, Byte value) {
 	bus->test_poke(addr, value);
+}
+
+void Ricoh5A22::set_fastrom_from_bus(bool fastrom_enabled) {
+	bus->set_fastrom(fastrom_enabled);
 }

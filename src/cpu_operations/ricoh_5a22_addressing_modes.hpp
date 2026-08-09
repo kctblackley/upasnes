@@ -202,7 +202,7 @@
 	/* 6.1 */ MakeHandler(Ricoh5A22Functions::NOP), \
 	/* 6.2 */ MakeHandler(Ricoh5A22Functions::Read<ReadFrom::PointerDB, ReadTo::Operand>), \
 	/* 7.1 */ MakeHandler(Ricoh5A22Functions::NOP, Ricoh5A22Predicates::MFlagSet), \
-	/* 7.2 */ MakeHandler(Ricoh5A22Functions::Read<ReadFrom::PointerDB, ReadTo::Operand, Mode::PlusOne>, Ricoh5A22Predicates::MFlagSet),
+	/* 7.2 */ MakeHandler(Ricoh5A22Functions::Read<ReadFrom::PointerPlusOneDBCarry, ReadTo::OperandHigh>, Ricoh5A22Predicates::MFlagSet),
 #define EMULATION_DIRECT_INDEXED_INDIRECT_D_X_READ \
 	/* 1.1 */ MakeHandler(Ricoh5A22Functions::IncrementPC), \
 	/* 1.2 */ MakeHandler(Ricoh5A22Functions::Read<ReadFrom::PCPB, ReadTo::Pointer>), \
@@ -213,11 +213,11 @@
 	/* 4.1 */ MakeHandler(Ricoh5A22Functions::NOP), \
 	/* 4.2 */ MakeHandler(Ricoh5A22Functions::Read<ReadFrom::Address, ReadTo::Pointer>), \
 	/* 5.1 */ MakeHandler(Ricoh5A22Functions::NOP), \
-	/* 5.2 */ MakeHandler(Ricoh5A22Functions::Read<ReadFrom::Address, ReadTo::Pointer, Mode::PlusOne>), \
+	/* 5.2 */ MakeHandler(Ricoh5A22Functions::Read<ReadFrom::AddressPlusOneWrap16, ReadTo::PointerHigh>), \
 	/* 6.1 */ MakeHandler(Ricoh5A22Functions::NOP), \
 	/* 6.2 */ MakeHandler(Ricoh5A22Functions::Read<ReadFrom::PointerDB, ReadTo::Operand>), \
 	/* 7.1 */ MakeHandler(Ricoh5A22Functions::NOP, Ricoh5A22Predicates::MFlagSet), \
-	/* 7.2 */ MakeHandler(Ricoh5A22Functions::Read<ReadFrom::PointerDB, ReadTo::Operand, Mode::PlusOne>, Ricoh5A22Predicates::MFlagSet),
+	/* 7.2 */ MakeHandler(Ricoh5A22Functions::Read<ReadFrom::PointerPlusOneDBCarry, ReadTo::OperandHigh>, Ricoh5A22Predicates::MFlagSet),
 
 #define NATIVE_DIRECT_INDEXED_INDIRECT_D_X_WRITE \
 	/* 1.1 */ MakeHandler(Ricoh5A22Functions::IncrementPC), \
@@ -233,7 +233,7 @@
 	/* 6.1 */ MakeHandler(Ricoh5A22Functions::Copy<ReadFrom::RegisterA, ReadTo::Operand>), \
 	/* 6.2 */ MakeHandler(Ricoh5A22Functions::Write<WriteValue::OperandLow, WriteTo::PointerDB>), \
 	/* 7.1 */ MakeHandler(Ricoh5A22Functions::NOP, Ricoh5A22Predicates::MFlagSet), \
-	/* 7.2 */ MakeHandler(Ricoh5A22Functions::Write<WriteValue::OperandHigh, WriteTo::PointerPlusOneDB>, Ricoh5A22Predicates::MFlagSet),
+	/* 7.2 */ MakeHandler(Ricoh5A22Functions::Write<WriteValue::OperandHigh, WriteTo::PointerPlusOneDBCarry>, Ricoh5A22Predicates::MFlagSet),
 #define EMULATION_DIRECT_INDEXED_INDIRECT_D_X_WRITE \
 	/* 1.1 */ MakeHandler(Ricoh5A22Functions::IncrementPC), \
 	/* 1.2 */ MakeHandler(Ricoh5A22Functions::Read<ReadFrom::PCPB, ReadTo::Pointer>), \
@@ -244,7 +244,7 @@
 	/* 4.1 */ MakeHandler(Ricoh5A22Functions::NOP), \
 	/* 4.2 */ MakeHandler(Ricoh5A22Functions::Read<ReadFrom::Address, ReadTo::Pointer>), \
 	/* 5.1 */ MakeHandler(Ricoh5A22Functions::NOP), \
-	/* 5.2 */ MakeHandler(Ricoh5A22Functions::Read<ReadFrom::Address, ReadTo::Pointer, Mode::PlusOne>), \
+	/* 5.2 */ MakeHandler(Ricoh5A22Functions::Read<ReadFrom::AddressPlusOneWrap16, ReadTo::PointerHigh>), \
 	/* 6.1 */ MakeHandler(Ricoh5A22Functions::Copy<ReadFrom::RegisterA, ReadTo::Operand>), \
 	/* 6.2 */ MakeHandler(Ricoh5A22Functions::Write<WriteValue::OperandLow, WriteTo::PointerDB>), \
 
@@ -343,11 +343,11 @@
 	/* 3.1 */ MakeHandler(Ricoh5A22Functions::IncrementPC<SetMode::AOD, Mode::IfSkipped>), \
 	/* 3.2 */ MakeHandler(Ricoh5A22Functions::Read<ReadFrom::Address, ReadTo::Pointer>), \
 	/* 4.1 */ MakeHandler(Ricoh5A22Functions::NOP), \
-	/* 4.2 */ MakeHandler(Ricoh5A22Functions::Read<ReadFrom::Address, ReadTo::Pointer, Mode::PlusOne>), \
+	/* 4.2 */ MakeHandler(Ricoh5A22Functions::Read<ReadFrom::AddressPlusOneWrap16, ReadTo::PointerHigh>), \
 	/* 6.1 */ MakeHandler(Ricoh5A22Functions::Copy<ReadFrom::RegisterA, ReadTo::Operand>), \
 	/* 6.2 */ MakeHandler(Ricoh5A22Functions::Write<WriteValue::OperandLow, WriteTo::PointerDB>), \
 	/* 7.1 */ MakeHandler(Ricoh5A22Functions::NOP, Ricoh5A22Predicates::MFlagSet), \
-	/* 7.2 */ MakeHandler(Ricoh5A22Functions::Write<WriteValue::OperandHigh, WriteTo::PointerPlusOneDB>, Ricoh5A22Predicates::MFlagSet),
+	/* 7.2 */ MakeHandler(Ricoh5A22Functions::Write<WriteValue::OperandHigh, WriteTo::PointerPlusOneDBCarry>, Ricoh5A22Predicates::MFlagSet),
 #define EMULATION_DIRECT_INDIRECT_WRITE \
 	/* 1.1 */ MakeHandler(Ricoh5A22Functions::IncrementPC), \
 	/* 1.2 */ MakeHandler(Ricoh5A22Functions::Read<ReadFrom::PCPB, ReadTo::Operand>), \

@@ -5,12 +5,13 @@
 #include "open_bus.hpp"
 #include "wram.hpp"
 #include "cartridge.hpp"
+#include "dma.hpp"
 
 class SPC700;
 class Ricoh5A22;
 class PPU;
 class Component;
-class DMAController;
+class DMA;
 
 class Bus {
 public:
@@ -21,7 +22,6 @@ public:
 
 	void connect_cpu(Ricoh5A22* cpu);
 	void connect_apu(SPC700* apu);
-	void connect_dma_controller(DMAController* dma_controller);
 	void connect_ppu(PPU* ppu);
 	
 	void set_wait_callback(WaitCallback callback);
@@ -50,6 +50,12 @@ public:
 
 	bool is_cartridge_mapped(Address addr);
 
+	void set_fastrom(bool fastrom_enabled) {
+		cartridge->set_fastrom(fastrom_enabled);
+	}
+
+	void wram_refresh_pause();
+
 private:
 	WaitCallback callback;
 	Byte data_bus;
@@ -60,9 +66,9 @@ private:
 	std::unique_ptr<OpenBus> open_bus;
 	std::unique_ptr<WRAM> wram;
 	std::unique_ptr<Cartridge> cartridge;
+	std::unique_ptr<DMA> dma;
 
 	SPC700* apu;
 	Ricoh5A22* cpu;
 	PPU* ppu;
-	DMAController* dma_controller;
 };

@@ -35,6 +35,7 @@ namespace ReadFrom {
 	struct Pointer   {};
 	struct Address   {};
 	struct AddressDL {};
+	struct AddressPlusOneWrap16 {};
 	struct Operand   {};
 	struct PC {};
 
@@ -172,6 +173,7 @@ namespace WriteValue {
 namespace WriteTo {
 	struct PointerDB        {};
 	struct PointerPlusOneDB {};
+	struct PointerPlusOneDBCarry {};
 	struct YDB  {};
 
 	struct Address {};
@@ -206,6 +208,7 @@ namespace Ricoh5A22SpecialFunctions {
 	}
 
 	void WAIT(Ricoh5A22& cpu, bool skipped) {
+		cpu.waiting = true;
 		cpu.poll_interrupts();
 		return;
 	}
@@ -218,6 +221,13 @@ namespace Ricoh5A22Functions {
 
 	void DecrementPC(Ricoh5A22& cpu, bool skipped) {
 		cpu.regs.PC -= 1;
+	}
+
+	void WaitPC(Ricoh5A22& cpu, bool skipped) {
+		if (!cpu.waiting) {
+			cpu.regs.PC++;
+			cpu.waiting = true;
+		}
 	}
 
 	template <typename Set = SetMode::None, bool IfSkipped = false, typename Branch = BranchMode::None, bool NoIncrement = false>
@@ -334,7 +344,7 @@ namespace Ricoh5A22Functions {
 			register_bank = 0;
 		}
 		if constexpr (std::is_same_v<From, ReadFrom::PointerPlusOne>) {
-			register_offset = cpu.BufferPointer + 1;
+			register_offset = (cpu.BufferPointer & 0xFF00) | ((cpu.BufferPointer + 1) & 0x00FF);
 			register_bank = 0;
 		}
 		if constexpr (std::is_same_v<From, ReadFrom::Vector>) {
@@ -360,6 +370,11 @@ namespace Ricoh5A22Functions {
 				register_offset = (cpu.BufferAddress & 0xFF00) | (uint8_t)(get_lo(cpu.BufferAddress + 1));
 			}
 			register_bank = 0;
+		}
+		if constexpr (std::is_same_v<From, ReadFrom::AddressPlusOneWrap16>) {
+			register_offset = (cpu.BufferAddress & 0xFF00) |
+                      ((cpu.BufferAddress + 1) & 0x00FF);
+    		register_bank = 0;
 		}
 		if constexpr (std::is_same_v<From, ReadFrom::AddressPlusTwoDL>) {
 			if (get_lo(cpu.regs.D) != 0) {
@@ -861,9 +876,10 @@ namespace Ricoh5A22Functions {
 	}
 
 	void adc_m_flag(Ricoh5A22& cpu) {
+		Byte value = cpu.BufferOperand & 0xFF;
 		if (!cpu.get_flag_D()) {
-			uint16_t result = get_lo(cpu.regs.A) + cpu.BufferOperand + cpu.get_flag_C();
-			if ((~(get_lo(cpu.regs.A) ^ cpu.BufferOperand) & (get_lo(cpu.regs.A) ^ get_lo(result)) & 0x80) != 0) {
+			uint16_t result = get_lo(cpu.regs.A) + value + cpu.get_flag_C();
+			if ((~(get_lo(cpu.regs.A) ^ value) & (get_lo(cpu.regs.A) ^ get_lo(result)) & 0x80) != 0) {
 				cpu.set_flag_V();
 			} else {
 				cpu.clear_flag_V();
@@ -878,13 +894,13 @@ namespace Ricoh5A22Functions {
 			cpu.set_flag_Z(result);
 			cpu.set_flag_N(result & 0x80);
 		} else {
-			uint16_t lo = (get_lo(cpu.regs.A) & 0x0F) + (cpu.BufferOperand & 0x0F) + cpu.get_flag_C();
+			uint16_t lo = (get_lo(cpu.regs.A) & 0x0F) + (value & 0x0F) + cpu.get_flag_C();
 			if (lo > 9) {
 				lo += 6;
 			}
 			uint16_t carry_to_hi = (lo > 0x0F) ? 1 : 0;
-			uint16_t hi_sum = (get_lo(cpu.regs.A) >> 4) + (cpu.BufferOperand >> 4) + carry_to_hi;
-			if ((~((get_lo(cpu.regs.A) >> 4) ^ (cpu.BufferOperand >> 4)) & ((get_lo(cpu.regs.A) >> 4) ^ hi_sum) & 0x08) != 0) {
+			uint16_t hi_sum = (get_lo(cpu.regs.A) >> 4) + (value >> 4) + carry_to_hi;
+			if ((~((get_lo(cpu.regs.A) >> 4) ^ (value >> 4)) & ((get_lo(cpu.regs.A) >> 4) ^ hi_sum) & 0x08) != 0) {
 				cpu.set_flag_V();
 			} else {
 				cpu.clear_flag_V();
@@ -1284,7 +1300,16 @@ namespace Ricoh5A22Functions {
 		if constexpr (std::is_same_v<To, WriteTo::PointerPlusOneDB>) {
 			address = (cpu.regs.DB << 16) | ((uint16_t)(cpu.BufferPointer + 1));
 		}
+		if constexpr (std::is_same_v<To, WriteTo::PointerPlusOneDBCarry>) {
+			uint16_t register_offset = cpu.BufferPointer + 1;
+			uint8_t register_bank = cpu.regs.DB;
 
+			if (cpu.BufferPointer == 0xFFFF) {
+				register_bank++;
+			}
+
+			address = (register_bank << 16) | register_offset;
+		}
 		if constexpr (std::is_same_v<To, WriteTo::Address>) {
 			address = cpu.BufferAddress;
 		}
@@ -2741,6 +2766,7 @@ namespace Ricoh5A22Functions {
 }
 
 namespace Ricoh5A22Predicates {
+
 	bool Never(Ricoh5A22& cpu) {
 		PREDICATE_CHECK_ROUTINE
 		return false;
@@ -5855,7 +5881,7 @@ Instruction<Ricoh5A22> e_ca = {
 
 // WAI (CB)
 Instruction<Ricoh5A22> n_cb = {
-	MakeHandler(Ricoh5A22Functions::IncrementPC),
+	MakeHandler(Ricoh5A22Functions::WaitPC),
 	MakeHandler(Ricoh5A22Functions::Read<ReadFrom::PCPB, ReadTo::Discard>),
 	MakeHandler(Ricoh5A22Functions::NOP),
 	MakeHandler(Ricoh5A22Functions::NOP),

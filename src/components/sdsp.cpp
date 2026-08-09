@@ -43,13 +43,10 @@ StereoSample SDSP::output() {
 void SDSP::tick() {
 	process_kon();
 	process_koff();
-	if (!audio_buffer.above_half_capacity()) {
-		    
-		for (auto& v : voices) {
-			v.tick();
-		}
-
-		StereoSample out = output();
-		audio_buffer.push(out);
+	for (auto& v : voices) {
+		v.tick();
 	}
+
+	StereoSample out = output();
+	audio_buffer.push(out);
 }

@@ -63,7 +63,7 @@ void SPC700::run_half_cycle() {
 void SPC700::accumulate(CycleCount delta) {
 	accumulated_cycles += delta;
 	while (accumulated_cycles > SPC_700_CYCLE_CONSTANT) {
-		if constexpr (SHOW_LOGS) {
+		if constexpr (SHOW_SPC_LOGS) {
 			if (instruction_cycle == 0) {
 				std::cout << "SPC700 PC=" << std::hex << (int)(regs.PC) << 
 				             "OPCODE=" << std::hex << (int)(BufferOpCode) << std::endl;
@@ -71,8 +71,13 @@ void SPC700::accumulate(CycleCount delta) {
 						  << " X=" << std::hex << (int)regs.X
 				          << " Y=" << std::hex << (int)regs.Y
 				          << " P=" << std::hex << (int)regs.P
+				          << " S=" << std::hex << (int)regs.S
+				    
 				          << "PC=" << std::hex << regs.PC
-						  
+						  << " ADDR=" << std::hex << (int)BufferAddress
+						  << " OPERAND=" << std::hex << (int)BufferOperand
+						  << " C2S(F4-F7)=" << std::hex << (int)cpu_to_spc_ports[0] << "," << (int)cpu_to_spc_ports[1] << "," << (int)cpu_to_spc_ports[2] << "," << (int)cpu_to_spc_ports[3]
+						  << " S2C(F4-F7)=" << std::hex << (int)spc_to_cpu_ports[0] << "," << (int)spc_to_cpu_ports[1] << "," << (int)spc_to_cpu_ports[2] << "," << (int)spc_to_cpu_ports[3]
 				          << "\n";
 			}
 		}

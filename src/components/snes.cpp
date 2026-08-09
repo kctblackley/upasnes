@@ -1,4 +1,3 @@
-
 #include "snes.hpp"
 #include <chrono>
 #include <thread>
@@ -19,7 +18,6 @@ SNES::SNES() : master_cycle(0) {
 
 	spc_700 = std::make_unique<SPC700>();
 	renderer = std::make_unique<Renderer>();
-	dma_controller = std::make_unique<DMAController>();
 
 	ricoh_5a22->connect_renderer(renderer.get());
 	ricoh_5a22->connect_ppu(ppu);
@@ -27,21 +25,19 @@ SNES::SNES() : master_cycle(0) {
 
 	bus->connect_cpu(ricoh_5a22);
 	bus->connect_apu(spc_700.get());
-	bus->connect_dma_controller(dma_controller.get());
 	bus->connect_ppu(ppu);
 
-	dma_controller->connect_cpu(ricoh_5a22);
-	dma_controller->connect_bus(bus.get());
-
-	ppu->connect_dma_controller(dma_controller.get());
 	ppu->connect_bus(bus.get());
 	ppu->connect_renderer(renderer.get());
 	ppu->create_window();
 
-	// Add wait-state-callback, when slow/fast data is accessed
 	bus->set_wait_callback([this](CycleCount cycles) {
 		ricoh_5a22->add_cycles(cycles);
 	});
+
+	// TODO: DMA controller is being rewritten from scratch. Once it exists again,
+	// reconnect it to the cpu/bus/ppu here and restore its wait-callback, which
+	// previously advanced the PPU and SPC700 in lockstep while a DMA was in progress.
 }
 
 void SNES::load_cartridge(const std::string& directory) {
@@ -82,12 +78,15 @@ void SNES::run() {
 	constexpr double TARGET_FRAME_SECONDS = 1.0 / 60.0988; // NTSC SNES refresh rate
 	auto frame_start = std::chrono::steady_clock::now();
 
-	while (running) {
-		CycleCount prev_master = master_cycle;
+	CycleCount prev_cpu_cycle = ricoh_5a22->get_cycle();
 
+	while (running) {
+		
 		tick_snes();
 		
-		CycleCount delta = master_cycle - prev_master;
+		CycleCount new_cpu_cycle = ricoh_5a22->get_cycle();
+		CycleCount delta = new_cpu_cycle - prev_cpu_cycle;
+		prev_cpu_cycle = new_cpu_cycle;
 		spc_700->accumulate(delta);
 		spc_700->accumulate_dsp(delta);
 
@@ -135,7 +134,6 @@ void SNES::reset() {
 		d->reset();
 	}
 	spc_700->reset();
-	dma_controller->reset();
 }
 
 void SNES::initialise() {
@@ -143,5 +141,4 @@ void SNES::initialise() {
 		d->initialise();
 	}
 	spc_700->initialise();
-	dma_controller->initialise();
 }

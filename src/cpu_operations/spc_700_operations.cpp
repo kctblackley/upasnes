@@ -934,25 +934,27 @@ namespace SPC700Functions {
 
 	template <int step>
 	void INCW(SPC700& cpu, bool skipped) {
+		Byte value = cpu.BufferOperand & 0xFF;
 		switch(step) {
 		case 1:
-			cpu.BufferOverflow = (cpu.BufferOperand == 0xFF);
-			cpu.BufferOperand += 1;
-			cpu.BufferLowZero = (cpu.BufferOperand == 0);
+			cpu.BufferOverflow = (value == 0xFF);
+			value += 1;
+			cpu.BufferLowZero = (value == 0);
 			break;
 		case 2:
-			cpu.BufferOperand += cpu.BufferOverflow;
-			if (cpu.BufferOperand & 0x80) {
+			value += cpu.BufferOverflow;
+			if (value & 0x80) {
 				cpu.set_flag_N();
 			} else {
 				cpu.clear_flag_N();
 			}
-			if (cpu.BufferLowZero && !cpu.BufferOperand) {
+			if (cpu.BufferLowZero && !value) {
 				cpu.set_flag_Z();
 			} else {
 				cpu.clear_flag_Z();
 			}
 		}
+		cpu.BufferOperand = value;
 	}
 
 	void CMPW(SPC700& cpu, bool skipped) {
@@ -4509,6 +4511,7 @@ Instruction<SPC700> s_fa = {
 	MakeHandler(SPC700Functions::Read<ReadFrom::PC, ReadTo::Operand>),
 	MakeHandler(SPC700Functions::IncrementPC<SubFunc::SetSubFunc>),
 	MakeHandler(SPC700Functions::Write<WriteValue::Operand0, WriteTo::Address>),
+	MakeHandler(SPC700Functions::NOP),
 	MakeHandler(SPC700Functions::NOP),
 	MakeHandler(SPC700Functions::Next)
 };

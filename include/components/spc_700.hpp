@@ -39,11 +39,11 @@ public:
 	void initialise() override;
 	
 	Byte communication_read(SNESAddress addr) override {
-		return spc_to_cpu_ports[(addr.offset - 0x2140) & 3];
+		return spc_to_cpu_ports[addr.offset & 3];
 	}
 
 	void communication_write(SNESAddress addr, Byte value) override {
-		cpu_to_spc_ports[(addr.offset - 0x2140) & 3] = value;
+		cpu_to_spc_ports[addr.offset & 3] = value;
 	}
 
 	void close_audio() {
@@ -51,6 +51,7 @@ public:
 	}
 
 	Byte read(Address addr) override {
+		cycle++;
 		if (addr >= 0xFD && addr <= 0xFF) {
 			Byte value = timers[addr - 0xFD].output;
 			timers[addr - 0xFD].output = 0;
@@ -66,6 +67,7 @@ public:
 	}
 
 	void write(Address addr, Byte value) override {
+		cycle++;
 		if (addr >= 0xFA && addr <= 0xFC) {
 			timers[addr - 0xFA].target = value;
 			return;
@@ -249,6 +251,8 @@ private:
 
 	std::array<Byte, 64> ipl_rom {};
 	SPCTimer timers[3];
+
+	int delay_cycles = 0;
 
 	double dsp_accumulated_cycles = 0;
 };

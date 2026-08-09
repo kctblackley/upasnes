@@ -14,7 +14,8 @@ enum class EnvelopeState {
 	DECAY,
 	SUSTAIN,
 	RELEASE,
-	DIRECT
+	DIRECT,
+	NONE
 };
 
 struct Gauss {
@@ -62,29 +63,46 @@ public:
 		case 0x4: srcn   =         value; break;
 		case 0x5:
 			adsr1 = value;
-			adsr_enable = (value & 0x80);
-			decay_rate  = (value >> 4) & 7;
-			attack_rate =  value & 0xF;
 			break;
 		case 0x6:
 			adsr2 = value;
-			sustain_level = (value >> 5) & 7;
-			sustain_rate  =  value & 0x1F;
 			break;
 		case 0x7:
 			gain = value;
-			if (gain & 0x80) {
-				gain_value = value & 0x7F;
-			} else {
-				gain_value = value & 0x1F;
-				gain_mode  = (value >> 5) & 3;
-			}
 			break;
 		}
 	}
 
 	void decode_brr_block();
 	void advance_brr_address();
+	void calculate_envelope();
+	void apply_envelope();
+	bool fire(int rate);
+
+	void reset_adsr_gain() {
+		is_adsr = adsr1 & 0x80;
+
+		if (is_adsr) {
+			// ADSR
+			envelope_state = EnvelopeState::ATTACK;
+			envelope = 0;
+
+			int n;
+			n = adsr1 & 0xF;
+			attack_rate = (n * 2) + 1;
+			attack_step = (attack_rate == 31) ? 1024 : 32;
+
+			n = (adsr1 >> 4) & 0x7;
+			decay_rate = (n * 2) + 16;
+
+			sustain_rate = adsr2 & 0x1F;
+			n = (adsr2 >> 5) & 0x7;
+			sustain_boundary = n * 0x100;
+
+		} else {
+			// GAIN (TO DO)
+		}
+	}
 
 	void key_on(Byte dir) {
 		directory = dir * 0x100;
@@ -96,6 +114,7 @@ public:
 		prev2 = 0;
 
 		reset_gauss();
+		reset_adsr_gain();
 
 		pitch_counter = 0;
 
@@ -108,8 +127,13 @@ public:
 	}
 
 	void release() {
-		active = false;
-		return;
+		if (is_adsr) {
+			// ADSR
+			envelope_state = EnvelopeState::RELEASE;
+		} else {
+			// GAIN (to implement)
+			active = false;
+		}
 	}
 
 	bool endx() { // <- IMPORTANT
@@ -172,15 +196,21 @@ private:
 	Byte adsr1 = 0x00;
 	Byte adsr2 = 0x00;
 
-	bool adsr_enable = false;
+	bool is_adsr = false;
 	Byte decay_rate = 0x00;
 	Byte attack_rate = 0x00;
-	Byte sustain_level = 0x00;
+	Word attack_step = 0x00;
+	Word sustain_boundary = 0x00;
 	Byte sustain_rate = 0x00;
+	Byte release_rate = 31;
 
 	Byte gain = 0x00; // how this is written depends on whether bit 7 is set/clear
 	Byte gain_value = 0x00;
 	Byte gain_mode  = 0x00;
+
+	int envelope = 0;
+	uint32_t envelope_tick = 0;
+	EnvelopeState envelope_state = EnvelopeState::NONE;
 
 	Byte envx = 0x00;
 	int8_t outx =  0x00;
@@ -203,6 +233,8 @@ private:
 	Sample current_sample = 0;
 	Sample prev1  = 0;
 	Sample prev2  = 0;
+
+	Sample final_sample = 0;
 
 	uint16_t sample_index  = 16;
 	uint16_t nibble_index  = 16;

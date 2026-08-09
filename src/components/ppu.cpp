@@ -1,11 +1,12 @@
 #include "ppu.hpp"
-#include "dma_controller.hpp"
 #include "ricoh_5a22.hpp"
+#include "bus.hpp"
 #include <iostream>
 #include <algorithm>
 
 constexpr int DOTS_PER_LINE = 1364;
-constexpr int HBLANK_DOTS = 1096;
+constexpr int HBLANK_DOTS = 1112;
+constexpr int CPU_PAUSE = 536;
 constexpr Address HVBJOY = 0x4212;
 constexpr CycleCount PPU_CYCLE = 4;
 
@@ -858,9 +859,7 @@ void PPU::enter_hblank() {
 		cpu->set_hvbjoy_flag(0b1 << 6, true);
 	}
 
-	if (!vblank && dma_controller) {
-		dma_controller->execute_hdma();
-	}
+	// TODO: HDMA execution hook goes here once the new DMA controller is written.
 }
 
 void PPU::leave_hblank() {
@@ -888,12 +887,10 @@ void PPU::leave_vblank() {
 	hvbjoy = hvbjoy & ~(0b1 << 7);
 	if (cpu) {
 		cpu->set_hvbjoy_flag(0b1 << 7, false);
-		cpu->signal_nmi_end();
+		//cpu->signal_nmi_end();
 	}
 
-	if (dma_controller) {
-		dma_controller->hdma_init();
-	}
+	// TODO: HDMA init trigger goes here once the new DMA controller is written.
 }
 
 void PPU::update_hblank() {
@@ -945,12 +942,16 @@ void PPU::tick_component() {
 		end_scanline();
 	}
 
+	if (hcounter == CPU_PAUSE) {
+		bus->wram_refresh_pause();
+	}
+
 	update_hblank();
 
 	bool condition_now =
-	    (irq_mode == 1 && hcounter == 4 * h_time_target) ||
-	    (irq_mode == 2 && vcounter == v_time_target && hcounter == 0) ||
-	    (irq_mode == 3 && vcounter == v_time_target && hcounter == 4 * h_time_target);
+	    (irq_mode == 1 && hcounter == 14 + (4 * h_time_target)) ||
+	    (irq_mode == 2 && vcounter == v_time_target && hcounter == 10) ||
+	    (irq_mode == 3 && vcounter == v_time_target && hcounter == 14 + (4 * h_time_target));
 
 	if (condition_now && !irq_condition_met) {
 	    call_irq();
@@ -959,10 +960,6 @@ void PPU::tick_component() {
 
 	cycle += 1;
 };
-
-void PPU::connect_dma_controller(DMAController* dma_controller) {
-	this->dma_controller = dma_controller;
-}
 
 // Moved here to avoid circular dependency
 

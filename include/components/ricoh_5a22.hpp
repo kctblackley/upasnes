@@ -39,10 +39,12 @@
 #define HTIMEH_ADDRESS 0x4208
 #define VTIMEL_ADDRESS 0x4209
 #define VTIMEH_ADDRESS 0x420A
+#define MEMSEL_ADDRESS 0x420D
 #define RDNMI_ADDRESS 0x4210
 #define TIMEUP_ADDRESS 0x4211
 
 class Bus;
+class DMA;
 
 // The Multiplier's RDMPYH and RDMPYL also store the remainder of division by the divisor
 // Multiplication takes 16 half-cycles of the CPU (not master clock)
@@ -133,7 +135,14 @@ public:
 		return 0x00;
 	}
 
+	void set_fastrom_from_bus(bool fastrom_enabled);
+
 	void communication_write(SNESAddress addr, Byte value) override {
+		if (addr.offset == MEMSEL_ADDRESS) {
+			fastrom_enabled = value & 1;
+			set_fastrom_from_bus(fastrom_enabled);
+		}
+
 		// Multiplier
 		if (addr.offset == WRMPYA_ADDRESS) { multiplier.WRMPYA = value; }
 		if (addr.offset == WRMPYB_ADDRESS) { multiplier.WRMPYB = value; }
@@ -313,6 +322,8 @@ public:
 		this->ppu = ppu;
 	}
 
+	void connect_dma(DMA* dma);
+
 	void log();
 
 
@@ -331,12 +342,14 @@ private:
 
 	Renderer* renderer = nullptr;
 	PPU* ppu = nullptr;
+	DMA* dma = nullptr;
 
 	Byte irq_mode;
 	bool nmi_line = false;
 	bool irq_line = false;
 	bool nmi_enabled = false;
 	bool auto_read_enabled = false;
+	bool fastrom_enabled = false;
 
 	// For disassembler
 	bool was_interrupt = false;
