@@ -43,6 +43,13 @@ inline Quadrant get_quadrant(Bank bank) {
 	return 4;
 }
 
+inline SNESAddress to_snes_address(Address address) {
+	SNESAddress result;
+    result.offset = address & 0xFFFF;
+    result.bank   = (address >> 16) & 0xFF;
+    return result;
+}
+
 inline Byte get_lo(Word word) {
 	return (word & 0xFF);
 }

@@ -55,7 +55,6 @@ public:
 
 	void set_bbad(Byte value) {
 		bbad = value;
-		b_bus_address = 0x2100 + bbad;
 	}
 
 	void set_a1tl(Byte value) {
@@ -109,6 +108,49 @@ public:
 	void enable_hdma()   { doing_hdma = true;   }
 	void disable_hdma()  { doing_hdma = false;  }
 
+	bool gpdma_enabled() const { return doing_gpdma; }
+	bool hdma_enabled()  const { return doing_hdma;  }
+
+	// a1b stays put
+	void increment_a_bus() {
+		a1_address++;
+	}
+
+	void decrement_a_bus() {
+		a1_address--;
+	}
+
+	Address get_a_bus() {
+		return (a1_bank << 16) | a1_address;
+	}
+
+	int channel_number = 0;
+
+	bool get_transfer_direction() const {
+	    return transfer_direction;
+	}
+
+	Byte get_a_bus_address_step() const {
+	    return a_bus_address_step;
+	}
+
+	Byte get_transfer_unit_select() const {
+	    return transfer_unit_select;
+	}
+
+	Byte get_bbad() const {
+	    return bbad;
+	}
+
+	uint32_t get_byte_counter() const {
+	    return (dash << 8) | dasl;
+	}
+
+	void update_das(uint32_t byte_counter) {
+		dasl = byte_counter & 0xFF;
+		dash = (byte_counter >> 8) & 0xFF;
+	}
+
 private:
 
 	// all are R/W
@@ -122,8 +164,6 @@ private:
 	bool addressing_mode = false; // 0 = direct table, 1 = indirect table (HDMA only)
 	Byte a_bus_address_step = 0; // 0 = increment, 2 = decrement, 1/3 = fixed
 	Byte transfer_unit_select = 0; // from the pattern table
-
-	Word b_bus_address = 0; // equal to 0x2100 + bbad
 
 	Byte  a1_bank = 0;
 	Word  a1_address = 0;
@@ -174,20 +214,77 @@ private:
 	bool doing_hdma  = false;
 };
 
+enum class GPDMAState {
+	GPDMAInit,
+	ChannelInit,
+	TransferByte,
+	End,
+	None
+};
+
+struct GPDMA {
+	bool transfer_direction = false;
+	Byte a_bus_address_step = 0;
+	Byte transfer_unit_select = 0;
+	Byte bbad = 0;
+	uint32_t byte_counter = 0;
+	uint32_t byte_tick = 0;
+	DMAChannel* ch = nullptr;
+	GPDMAState state = GPDMAState::None;
+	int channel_number = 0;
+	CycleCount cycle = 0;
+};
+
+struct HDMA {
+
+};
+
 class DMA : public Component {
 public:
-	DMA() {}
+	DMA() {
+
+		int channel_number = 0;
+		for (auto& ch : channels) {
+			ch.channel_number = channel_number;
+			channel_number++;
+		}
+
+	}
+
+	void tick_hdma();
+	void tick_gpdma();
 
 	Byte get_open_bus();
 	void set_open_bus(Byte value);
+
+	DMAChannel* get_earliest_gpdma_channel() {
+		for (auto& ch : channels) {
+			if (ch.gpdma_enabled()) {
+				return &ch;
+			}
+		}
+		return nullptr;
+	}
+
+	DMAChannel* get_earliest_hdma_channel() {
+		for (auto& ch : channels) {
+			if (ch.hdma_enabled()) {
+				return &ch;
+			}
+		}
+		return nullptr;
+	}
 
 	void set_mdmaen(Byte value) {
 		int ch = 0;
 
 		if (value) {
-			gpdma_active = true;
+			std::cout << "GPDMA TRIGGERED AT CPU CYCLE " << std::dec << (*cpu_cycle)  << "\n";
+			gpdma_pending = true;
 		} else {
-			gpdma_active = false;
+			std::cout << "GPDMA TRIGGERED AT CPU CYCLE " << std::dec << (*cpu_cycle)  << "\n";
+			gpdma_pending = false;
+			gpdma_active  = false;
 		}
 
 		while (ch < 8) {
@@ -285,12 +382,34 @@ public:
 		return hdma_active || gpdma_active;
 	}
 
+	void log_gpdma() {
+		return;
+	}
+
+	void gpdma_init() {
+		std::cout << "GPDMA INIT AT CPU CYCLE " << std::dec << (*cpu_cycle)  << "\n";
+		gpdma_pending = false;
+		gpdma_active = true;
+		gpdma.state = GPDMAState::GPDMAInit;
+		log_gpdma();
+	}
+
+	void log_hdma() {
+		return;
+	}
+
+	void hdma_init() {
+		std::cout << "HDMA INIT AT CPU CYCLE " << std::dec << (*cpu_cycle) << "\n";
+		log_hdma();
+	}
+
 	// More steps for HDMA to actually occur
 	bool hdma_enabled = false; // HDMAEN updates this
 	bool hdma_initialised = false; // when hdma_init() is called, only do so if hdma is enabled
 
-	bool hdma_active  = false; // set to active only when there is HBlank and HDMA is enabled
-	bool gpdma_active = false; // GPDMA begins as soon as MDMAEN is written to (that is, a few cycles after)
+	bool hdma_active   = false; // set to active only when there is HBlank and HDMA is enabled
+	bool gpdma_active  = false; // GPDMA begins as soon as MDMAEN is written to (that is, a few cycles after)
+	bool gpdma_pending = false;
 
 	void connect_bus(Bus* bus) {
 		this->bus = bus;
@@ -306,8 +425,69 @@ public:
 	Byte read(Address addr) override { return 0; }
 	void write(Address addr, Byte value) override { return; }
 
+	void connect_cpu_cycle_counter(CycleCount* cpu_cycle) {
+		this->cpu_cycle = cpu_cycle;
+	}
+
+	bool is_forbidden_a_bus_address(SNESAddress addr) {
+		if ((addr.bank >= 0x00 && addr.bank <= 0x3F) || (addr.bank >= 0x80 && addr.bank <= 0xBF)) {
+			return (addr.offset >= 0x2100 && addr.offset <= 0x21FF) ||
+			       (addr.offset >= 0x4000 && addr.offset <= 0x421F) ||
+			       (addr.offset >= 0x4300 && addr.offset <= 0x437F);
+		}
+		return false;
+	}
+
+	uint8_t get_b_bus(Byte bbad, Byte transfer_unit_select, uint32_t byte_tick);
+
+	Byte dma_read(SNESAddress addr);
+	void dma_write(SNESAddress addr, Byte value);
+
+	Byte a_bus_read(SNESAddress addr) {
+		if (is_forbidden_a_bus_address(addr)) {
+			return get_open_bus();
+		}
+		return dma_read(addr);
+	}
+
+	void a_bus_write(SNESAddress addr, Byte value) {
+		if (is_forbidden_a_bus_address(addr)) {
+			return;
+		}
+		return dma_write(addr, value);
+	}
+
+	Byte b_bus_read(uint8_t b_bus) {
+		SNESAddress addr;
+		addr.offset = 0x2100 | b_bus;
+		addr.bank = 0x00;
+		return dma_read(addr);
+	}
+
+	void b_bus_write(uint8_t b_bus, Byte value) {
+		SNESAddress addr;
+		addr.offset = 0x2100 | b_bus;
+		addr.bank = 0x00;
+		dma_write(addr, value);
+	}
+
+	void transfer_a_to_b(Address a_bus, uint8_t b_bus) {
+		SNESAddress address = to_snes_address(a_bus);
+		Byte value = a_bus_read(address);
+		b_bus_write(b_bus, value);
+	}
+
+	void transfer_b_to_a(uint8_t b_bus, Address a_bus) {
+		SNESAddress address = to_snes_address(a_bus);
+		Byte value = b_bus_read(b_bus);
+		a_bus_write(address, value);
+	}
 
 private:
+	CycleCount* cpu_cycle = nullptr;
 	DMAChannel channels[8] {};
 	Bus* bus = nullptr;
+
+	GPDMA gpdma;
+	HDMA hdma;
 };

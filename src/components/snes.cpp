@@ -81,12 +81,13 @@ void SNES::run() {
 	CycleCount prev_cpu_cycle = ricoh_5a22->get_cycle();
 
 	while (running) {
+
+		CycleCount prev_master_cycle = master_cycle;
 		
 		tick_snes();
+
+		CycleCount delta = master_cycle -  prev_master_cycle;
 		
-		CycleCount new_cpu_cycle = ricoh_5a22->get_cycle();
-		CycleCount delta = new_cpu_cycle - prev_cpu_cycle;
-		prev_cpu_cycle = new_cpu_cycle;
 		spc_700->accumulate(delta);
 		spc_700->accumulate_dsp(delta);
 

@@ -11,4 +11,4 @@ constexpr bool SHOW_SPC_LOGS = false;
 constexpr bool SHOW_SDSP_LOGS = false;
 
 // JUST FOR ME!
-constexpr bool PLAYING_EARTHBOUND = false;
+constexpr bool PLAYING_EARTHBOUND = true;

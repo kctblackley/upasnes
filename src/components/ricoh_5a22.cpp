@@ -153,7 +153,7 @@ void Ricoh5A22::run_half_cycle() {
 	}
 }
 
-void Ricoh5A22::tick_component() { // when the component is ticked, it does a half tick in actuality
+void Ricoh5A22::tick_cpu() {
 	tick++;
 	if constexpr (!HALF_CYCLES) {
 		run_half_cycle();
@@ -162,13 +162,35 @@ void Ricoh5A22::tick_component() { // when the component is ticked, it does a ha
 	this->add_cycles(RICOH_5A22_CYCLE);
 }
 
+void Ricoh5A22::tick_component() { // when the component is ticked, it does a half tick in actuality
+	if (dma->dma_active() && dma->hdma_active) {
+		dma->tick_hdma();
+		this->add_cycles(1);
+		return;
+	}
+	if (dma->dma_active() && dma->gpdma_active) {
+		dma->tick_gpdma();
+		this->add_cycles(1);
+		return;
+	}
+	if (dma->gpdma_pending) {
+		tick_cpu();
+		CycleCount alignment = (8 - (this->cycle & 7)) & 7;
+		this->add_cycles(alignment);
+		dma->gpdma_init();
+		return;
+	}
+	tick_cpu();
+}
+
 void Ricoh5A22::reset() {
 	return;
 }
 
 void Ricoh5A22::connect_dma(DMA* dma) {
 	this->dma = dma;
-	this->dma->connect_bus(bus);
+	(this->dma)->connect_bus(bus);
+	(this->dma)->connect_cpu_cycle_counter(&this->cycle);
 }
 
 void Ricoh5A22::initialise() {

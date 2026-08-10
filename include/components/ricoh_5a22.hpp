@@ -80,6 +80,7 @@ public:
 	void add_cycles(CycleCount cycles) override;
 
 	void run_half_cycle();
+	void tick_cpu();
 	void tick_component() override;
 	CycleCount get_cycle() override;
 	TickCount get_tick() override;
@@ -326,12 +327,12 @@ public:
 
 	void log();
 
+	CycleCount cycle;
 
 private:
 	
 	Bus* bus = nullptr;
 
-	CycleCount cycle; 
 	CycleCount instruction_cycle; 
 	TickCount tick;
 
