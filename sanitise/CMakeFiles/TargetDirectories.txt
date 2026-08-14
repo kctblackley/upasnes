@@ -1,3 +1,0 @@
-/home/kctb/Projects/Emulators/upasnes/sanitise/CMakeFiles/snes_emulator.dir
-/home/kctb/Projects/Emulators/upasnes/sanitise/CMakeFiles/edit_cache.dir
-/home/kctb/Projects/Emulators/upasnes/sanitise/CMakeFiles/rebuild_cache.dir

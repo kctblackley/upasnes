@@ -5,6 +5,8 @@ build/*
 CMakeFiles/*
 tests/*
 ipl/*
+debug/*
+sanitise/*
 !ipl/.gitkeep
 logs/*
 README.md
