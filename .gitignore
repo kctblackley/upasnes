@@ -1,4 +1,5 @@
 *
 !/src/
 !/include/
-!/ipl/
+!/ipl/.gitkeep
+!/rom/.gitkeep

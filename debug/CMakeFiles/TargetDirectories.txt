@@ -1,3 +1,0 @@
-/home/kctb/Projects/Emulators/upasnes/debug/CMakeFiles/snes_emulator.dir
-/home/kctb/Projects/Emulators/upasnes/debug/CMakeFiles/edit_cache.dir
-/home/kctb/Projects/Emulators/upasnes/debug/CMakeFiles/rebuild_cache.dir
