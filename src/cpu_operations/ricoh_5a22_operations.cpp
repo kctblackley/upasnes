@@ -2,7 +2,7 @@
 #include "ricoh_5a22_addressing_modes.hpp"
 #include "ricoh_5a22.hpp"
 
-Address get_pcpb(Word pc, Byte pb) {
+static Address get_pcpb(Word pc, Byte pb) {
 	return (pb << 16) | pc;
 }
 
@@ -201,13 +201,13 @@ namespace WriteTo {
 
 // Operations which will require additional features when added
 namespace Ricoh5A22SpecialFunctions {
-	void STOP(Ricoh5A22& cpu, bool skipped) {
+	static void STOP(Ricoh5A22& cpu, bool skipped) {
 		// STOP BEHAVIOUR TO OCCUR HERE
 		// Stops processor until hardware reset
 		return;
 	}
 
-	void WAIT(Ricoh5A22& cpu, bool skipped) {
+	static void WAIT(Ricoh5A22& cpu, bool skipped) {
 		cpu.waiting = true;
 		cpu.poll_interrupts();
 		return;
@@ -215,15 +215,15 @@ namespace Ricoh5A22SpecialFunctions {
 }
 
 namespace Ricoh5A22Functions {
-	void NOP(Ricoh5A22& cpu, bool skipped) {
+	static void NOP(Ricoh5A22& cpu, bool skipped) {
 		return;
 	}
 
-	void DecrementPC(Ricoh5A22& cpu, bool skipped) {
+	static void DecrementPC(Ricoh5A22& cpu, bool skipped) {
 		cpu.regs.PC -= 1;
 	}
 
-	void WaitPC(Ricoh5A22& cpu, bool skipped) {
+	static void WaitPC(Ricoh5A22& cpu, bool skipped) {
 		if (!cpu.waiting) {
 			cpu.regs.PC++;
 			cpu.waiting = true;
@@ -231,7 +231,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename Set = SetMode::None, bool IfSkipped = false, typename Branch = BranchMode::None, bool NoIncrement = false>
-	void IncrementPC(Ricoh5A22& cpu, bool skipped) {
+	static void IncrementPC(Ricoh5A22& cpu, bool skipped) {
 		
 		if constexpr (IfSkipped) {
 			if (skipped && !NoIncrement) { cpu.regs.PC++; }
@@ -326,7 +326,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename From, typename To, bool PlusOne = false, typename BranchingRoutine = Branching::None>
-	void Read(Ricoh5A22& cpu, bool skipped) {
+	static void Read(Ricoh5A22& cpu, bool skipped) {
 		
 		Word register_offset = 0;
 		Byte register_bank = 0;
@@ -568,7 +568,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename From, typename To, typename Mode = CopyMode::All, bool PCIncrement = false>
-	void Copy(Ricoh5A22& cpu, bool skipped) {
+	static void Copy(Ricoh5A22& cpu, bool skipped) {
 		
 		Word* to = nullptr;
 		Word* from = nullptr;
@@ -628,7 +628,7 @@ namespace Ricoh5A22Functions {
 
 
 	template <typename CPUMode, bool PCIncrement = false>
-	void LDA(Ricoh5A22& cpu, bool skipped) {
+	static void LDA(Ricoh5A22& cpu, bool skipped) {
 		
 		if constexpr (PCIncrement) {
 			cpu.regs.PC++;
@@ -652,7 +652,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode, bool PCIncrement = false>
-	void LDX(Ricoh5A22& cpu, bool skipped) {
+	static void LDX(Ricoh5A22& cpu, bool skipped) {
 		
 		if constexpr (PCIncrement) {
 			cpu.regs.PC++;
@@ -675,39 +675,39 @@ namespace Ricoh5A22Functions {
 		
 	}
 
-	void BRL(Ricoh5A22& cpu, bool skipped) {
+	static void BRL(Ricoh5A22& cpu, bool skipped) {
 		cpu.regs.PC += cpu.BufferOperand;
 	}
 
-	void SEC(Ricoh5A22& cpu, bool skipped) {
+	static void SEC(Ricoh5A22& cpu, bool skipped) {
 		cpu.set_flag_C();
 	}
 
-	void SEI(Ricoh5A22& cpu, bool skipped) {
+	static void SEI(Ricoh5A22& cpu, bool skipped) {
 		cpu.set_flag_I();
 	}
 
-	void SED(Ricoh5A22& cpu, bool skipped) {
+	static void SED(Ricoh5A22& cpu, bool skipped) {
 		cpu.set_flag_D();
 	}
 
-	void CLC(Ricoh5A22& cpu, bool skipped) {
+	static void CLC(Ricoh5A22& cpu, bool skipped) {
 		cpu.clear_flag_C();
 	}
 
-	void CLD(Ricoh5A22& cpu, bool skipped) {
+	static void CLD(Ricoh5A22& cpu, bool skipped) {
 		cpu.clear_flag_D();
 	}
 
-	void CLI(Ricoh5A22& cpu, bool skipped) {
+	static void CLI(Ricoh5A22& cpu, bool skipped) {
 		cpu.clear_flag_I();
 	}
 
-	void CLV(Ricoh5A22& cpu, bool skipped) {
+	static void CLV(Ricoh5A22& cpu, bool skipped) {
 		cpu.clear_flag_V();
 	}
 
-	void XCE(Ricoh5A22& cpu, bool skipped) {
+	static void XCE(Ricoh5A22& cpu, bool skipped) {
 		bool carry = cpu.get_flag_C();
 		bool emulation = cpu.regs.emulation_mode;
 
@@ -729,7 +729,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode, bool PCIncrement = false>
-	void LDY(Ricoh5A22& cpu, bool skipped) {
+	static void LDY(Ricoh5A22& cpu, bool skipped) {
 		
 		if constexpr (PCIncrement) {
 			cpu.regs.PC++;
@@ -753,7 +753,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode, bool PCIncrement = false>
-	void ORA(Ricoh5A22& cpu, bool skipped) {
+	static void ORA(Ricoh5A22& cpu, bool skipped) {
 		
 		if constexpr (PCIncrement) {
 			cpu.regs.PC++;
@@ -776,7 +776,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode, bool PCIncrement = false>
-	void CMP(Ricoh5A22& cpu, bool skipped) {
+	static void CMP(Ricoh5A22& cpu, bool skipped) {
 		
 		if constexpr (PCIncrement) {
 			cpu.regs.PC++;
@@ -828,7 +828,7 @@ namespace Ricoh5A22Functions {
 
 
 	template <typename CPUMode, bool PCIncrement = false>
-	void AND(Ricoh5A22& cpu, bool skipped) {
+	static void AND(Ricoh5A22& cpu, bool skipped) {
 		
 		if constexpr (PCIncrement) {
 			cpu.regs.PC++;
@@ -852,7 +852,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode, bool PCIncrement = false>
-	void EOR(Ricoh5A22& cpu, bool skipped) {
+	static void EOR(Ricoh5A22& cpu, bool skipped) {
 		
 		if constexpr (PCIncrement) {
 			cpu.regs.PC++;
@@ -875,7 +875,7 @@ namespace Ricoh5A22Functions {
 		
 	}
 
-	void adc_m_flag(Ricoh5A22& cpu) {
+	static void adc_m_flag(Ricoh5A22& cpu) {
 		Byte value = cpu.BufferOperand & 0xFF;
 		if (!cpu.get_flag_D()) {
 			uint16_t result = get_lo(cpu.regs.A) + value + cpu.get_flag_C();
@@ -920,7 +920,7 @@ namespace Ricoh5A22Functions {
 		}
 	}
 
-	void adc_no_m_flag(Ricoh5A22& cpu) {
+	static void adc_no_m_flag(Ricoh5A22& cpu) {
 		if (!cpu.get_flag_D()) {
 			uint32_t result = cpu.regs.A + cpu.BufferOperand + cpu.get_flag_C();
 			if ((~(cpu.regs.A ^ cpu.BufferOperand) & (cpu.regs.A ^ (uint16_t)(result)) & 0x8000) != 0) {
@@ -975,7 +975,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode, bool PCIncrement = false>
-	void ADC(Ricoh5A22& cpu, bool skipped) {
+	static void ADC(Ricoh5A22& cpu, bool skipped) {
 		
 		if constexpr (PCIncrement) {
 			cpu.regs.PC++;
@@ -992,7 +992,7 @@ namespace Ricoh5A22Functions {
 		
 	}
 
-	void sbc_m_flag(Ricoh5A22& cpu) {
+	static void sbc_m_flag(Ricoh5A22& cpu) {
 		if (!cpu.get_flag_D()) {
 			uint16_t result = get_lo(cpu.regs.A) - cpu.BufferOperand - (1 - cpu.get_flag_C());
 
@@ -1046,7 +1046,7 @@ namespace Ricoh5A22Functions {
 		}
 	}
 
-	void sbc_no_m_flag(Ricoh5A22& cpu) {
+	static void sbc_no_m_flag(Ricoh5A22& cpu) {
 		if (!cpu.get_flag_D()) {
 			uint32_t result = (uint32_t)cpu.regs.A - (uint32_t)cpu.BufferOperand - (1 - cpu.get_flag_C());
 
@@ -1113,7 +1113,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode, bool PCIncrement = false>
-	void SBC(Ricoh5A22& cpu, bool skipped) {
+	static void SBC(Ricoh5A22& cpu, bool skipped) {
 		
 		if constexpr (PCIncrement) {
 			cpu.regs.PC++;
@@ -1131,7 +1131,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template<bool PCIncrement = false>
-	void DirectIndirectYIndex(Ricoh5A22& cpu, bool skipped) {
+	static void DirectIndirectYIndex(Ricoh5A22& cpu, bool skipped) {
 		if constexpr (PCIncrement) {
 			cpu.regs.PC++;
 		}
@@ -1143,7 +1143,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template<bool PCIncrement = false>
-	void AbsoluteYIndex(Ricoh5A22& cpu, bool skipped) {
+	static void AbsoluteYIndex(Ricoh5A22& cpu, bool skipped) {
 		if constexpr (PCIncrement) {
 			cpu.regs.PC++;
 		}
@@ -1155,7 +1155,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template<bool PCIncrement = false>
-	void AbsoluteXIndex(Ricoh5A22& cpu, bool skipped) {
+	static void AbsoluteXIndex(Ricoh5A22& cpu, bool skipped) {
 		if constexpr (PCIncrement) {
 			cpu.regs.PC++;
 		}
@@ -1167,7 +1167,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template<bool PCIncrement = false>
-	void AbsoluteXRMWIndex(Ricoh5A22& cpu, bool skipped) {
+	static void AbsoluteXRMWIndex(Ricoh5A22& cpu, bool skipped) {
 		if constexpr (PCIncrement) {
 			cpu.regs.PC++;
 		}
@@ -1178,7 +1178,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template<bool PCIncrement = false>
-	void AbsoluteLongXIndex(Ricoh5A22& cpu, bool skipped) {
+	static void AbsoluteLongXIndex(Ricoh5A22& cpu, bool skipped) {
 		if constexpr (PCIncrement) {
 			cpu.regs.PC++;
 		}
@@ -1189,7 +1189,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <bool PCIncrement = false>
-	void DirectIndirectIndexedLongYIndex(Ricoh5A22& cpu, bool skipped) {
+	static void DirectIndirectIndexedLongYIndex(Ricoh5A22& cpu, bool skipped) {
 		if constexpr (PCIncrement) {
 			cpu.regs.PC++;
 		}
@@ -1200,7 +1200,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template<bool PCIncrement = false>
-	void StackRelativeIndirectIndexed(Ricoh5A22& cpu, bool skipped) {
+	static void StackRelativeIndirectIndexed(Ricoh5A22& cpu, bool skipped) {
 		if constexpr (PCIncrement) {
 			cpu.regs.PC++;
 		}
@@ -1210,12 +1210,12 @@ namespace Ricoh5A22Functions {
 		cpu.BufferBank = cpu.regs.DB + (tmp >> 16);
 	}
 
-	void PollInterrupts(Ricoh5A22& cpu, bool skipped) {
+	static void PollInterrupts(Ricoh5A22& cpu, bool skipped) {
 		cpu.poll_interrupts();
 	}
 
 	template<typename CPUMode>
-	void SetVector(Ricoh5A22& cpu, bool skipped) {
+	static void SetVector(Ricoh5A22& cpu, bool skipped) {
 		if constexpr (std::is_same_v<CPUMode, Mode::Native>) {
 			cpu.Vector = 0xFFE4;
 		} else {
@@ -1224,7 +1224,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template<typename CPUMode>
-	void SetVectorBRK(Ricoh5A22& cpu, bool skipped) {
+	static void SetVectorBRK(Ricoh5A22& cpu, bool skipped) {
 		if constexpr (std::is_same_v<CPUMode, Mode::Native>) {
 			cpu.Vector = 0xFFE6;
 		} else {
@@ -1233,7 +1233,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template<typename Value, typename To>
-	void Write(Ricoh5A22& cpu, bool skipped) {
+	static void Write(Ricoh5A22& cpu, bool skipped) {
 		Byte value;
 		if constexpr (std::is_same_v<Value, WriteValue::OperandLow>) {
 			value = (uint8_t)(get_lo(cpu.BufferOperand));
@@ -1395,7 +1395,7 @@ namespace Ricoh5A22Functions {
 		}
 	}
 
-	void MVP(Ricoh5A22& cpu, bool skipped) {
+	static void MVP(Ricoh5A22& cpu, bool skipped) {
 	    cpu.regs.A -= 1;
 	    
 	    if (cpu.get_flag_X()) {
@@ -1416,7 +1416,7 @@ namespace Ricoh5A22Functions {
 	    }
 	}
 
-	void MVN(Ricoh5A22& cpu, bool skipped) {
+	static void MVN(Ricoh5A22& cpu, bool skipped) {
 	    cpu.regs.A -= 1;
 	    
 	    if (cpu.get_flag_X()) {
@@ -1438,7 +1438,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode, typename OpMode>
-	void TB(Ricoh5A22& cpu, bool skipped) {
+	static void TB(Ricoh5A22& cpu, bool skipped) {
 		if constexpr (std::is_same_v<CPUMode, Mode::Native>) {
 			if (cpu.get_flag_M()) {
 				if ( (get_lo(cpu.regs.A) & get_lo(cpu.BufferOperand)) == 0) {
@@ -1468,7 +1468,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode, typename SetMode = Mode::Operand>
-	void ASL(Ricoh5A22& cpu, bool skipped) {
+	static void ASL(Ricoh5A22& cpu, bool skipped) {
 		uint16_t* shifting = nullptr;
 		if constexpr (std::is_same_v<SetMode, Mode::RegisterA>) {
 			shifting = &cpu.regs.A;
@@ -1536,7 +1536,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode, typename SetMode = Mode::Operand>
-	void ROL(Ricoh5A22& cpu, bool skipped) {
+	static void ROL(Ricoh5A22& cpu, bool skipped) {
 		uint16_t* rotating = nullptr;
 		if constexpr (std::is_same_v<SetMode, Mode::RegisterA>) {
 			rotating = &cpu.regs.A;
@@ -1617,7 +1617,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode, typename SetMode = Mode::Operand>
-	void LSR(Ricoh5A22& cpu, bool skipped) {
+	static void LSR(Ricoh5A22& cpu, bool skipped) {
 		uint16_t* shifting = nullptr;
 		if constexpr (std::is_same_v<SetMode, Mode::RegisterA>) {
 			shifting = &cpu.regs.A;
@@ -1685,7 +1685,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode, typename SetMode = Mode::Operand>
-	void ROR(Ricoh5A22& cpu, bool skipped) {
+	static void ROR(Ricoh5A22& cpu, bool skipped) {
 		uint16_t* rotating = nullptr;
 		if constexpr (std::is_same_v<SetMode, Mode::RegisterA>) {
 			rotating = &cpu.regs.A;
@@ -1766,7 +1766,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode>
-	void TSX(Ricoh5A22& cpu, bool skipped) {
+	static void TSX(Ricoh5A22& cpu, bool skipped) {
 		if constexpr (std::is_same_v<CPUMode, Mode::Native>) {
 			if (cpu.get_flag_X()) {
 				cpu.regs.X = (get_hi(cpu.regs.X) << 8) | (uint8_t)(get_lo(cpu.regs.S));
@@ -1809,7 +1809,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode>
-	void TXY(Ricoh5A22& cpu, bool skipped) {
+	static void TXY(Ricoh5A22& cpu, bool skipped) {
 		if constexpr (std::is_same_v<CPUMode, Mode::Native>) {
 			if (cpu.get_flag_X()) {
 				cpu.regs.Y = (get_hi(cpu.regs.Y) << 8) | (uint8_t)(get_lo(cpu.regs.X));
@@ -1852,7 +1852,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode>
-	void TYX(Ricoh5A22& cpu, bool skipped) {
+	static void TYX(Ricoh5A22& cpu, bool skipped) {
 		if constexpr (std::is_same_v<CPUMode, Mode::Native>) {
 			if (cpu.get_flag_X()) {
 				cpu.regs.X = (get_hi(cpu.regs.X) << 8) | (uint8_t)(get_lo(cpu.regs.Y));
@@ -1895,7 +1895,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode>
-	void TAX(Ricoh5A22& cpu, bool skipped) {
+	static void TAX(Ricoh5A22& cpu, bool skipped) {
 		if constexpr (std::is_same_v<CPUMode, Mode::Native>) {
 			if (cpu.get_flag_X()) {
 				cpu.regs.X = (get_hi(cpu.regs.X) << 8) | (uint8_t)(get_lo(cpu.regs.A));
@@ -1938,7 +1938,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode>
-	void TAY(Ricoh5A22& cpu, bool skipped) {
+	static void TAY(Ricoh5A22& cpu, bool skipped) {
 		if constexpr (std::is_same_v<CPUMode, Mode::Native>) {
 			if (cpu.get_flag_X()) {
 				cpu.regs.Y = (get_hi(cpu.regs.Y) << 8) | (uint8_t)(get_lo(cpu.regs.A));
@@ -1981,7 +1981,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode>
-	void TXA(Ricoh5A22& cpu, bool skipped) {
+	static void TXA(Ricoh5A22& cpu, bool skipped) {
 		if constexpr (std::is_same_v<CPUMode, Mode::Native>) {
 			if (cpu.get_flag_M()) {
 				cpu.regs.A = (get_hi(cpu.regs.A) << 8) | (uint8_t)(get_lo(cpu.regs.X));
@@ -2024,7 +2024,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode>
-	void TYA(Ricoh5A22& cpu, bool skipped) {
+	static void TYA(Ricoh5A22& cpu, bool skipped) {
 		if constexpr (std::is_same_v<CPUMode, Mode::Native>) {
 			if (cpu.get_flag_M()) {
 				cpu.regs.A = (get_hi(cpu.regs.A) << 8) | (uint8_t)(get_lo(cpu.regs.Y));
@@ -2067,7 +2067,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode>
-	void TCD(Ricoh5A22& cpu, bool skipped) {
+	static void TCD(Ricoh5A22& cpu, bool skipped) {
 		cpu.regs.D = cpu.regs.A;
 		if ((get_hi(cpu.regs.D) & 0x80) != 0) {
 			cpu.set_flag_N();
@@ -2082,7 +2082,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode>
-	void TCS(Ricoh5A22& cpu, bool skipped) {
+	static void TCS(Ricoh5A22& cpu, bool skipped) {
 		if constexpr (std::is_same_v<CPUMode, Mode::Native>) {
 			cpu.regs.S = cpu.regs.A;
 		} else {
@@ -2091,7 +2091,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode>
-	void TDC(Ricoh5A22& cpu, bool skipped) {
+	static void TDC(Ricoh5A22& cpu, bool skipped) {
 		cpu.regs.A = cpu.regs.D;
 		if ((get_hi(cpu.regs.A) & 0x80) != 0) {
 			cpu.set_flag_N();
@@ -2106,7 +2106,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode>
-	void TSC(Ricoh5A22& cpu, bool skipped) {
+	static void TSC(Ricoh5A22& cpu, bool skipped) {
 		if constexpr (std::is_same_v<CPUMode, Mode::Native>) {
 			cpu.regs.A = cpu.regs.S;
 			if ((get_hi(cpu.regs.A) & 0x80) != 0) {
@@ -2135,7 +2135,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode>
-	void TXS(Ricoh5A22& cpu, bool skipped) {
+	static void TXS(Ricoh5A22& cpu, bool skipped) {
 		if constexpr (std::is_same_v<CPUMode, Mode::Native>) {
 			cpu.regs.S = cpu.regs.X;
 		} else {
@@ -2143,7 +2143,7 @@ namespace Ricoh5A22Functions {
 		}
 	}
 
-	void XBA(Ricoh5A22& cpu, bool skipped) {
+	static void XBA(Ricoh5A22& cpu, bool skipped) {
 		uint8_t lo = get_lo(cpu.regs.A);
 		uint8_t hi = get_hi(cpu.regs.A);
 		cpu.regs.A = (lo << 8) | (uint8_t)(hi);
@@ -2160,7 +2160,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode, bool IsImmediate = false>
-	void BIT(Ricoh5A22& cpu, bool skipped) {
+	static void BIT(Ricoh5A22& cpu, bool skipped) {
 		if constexpr (IsImmediate) {
 			cpu.regs.PC++;
 		}
@@ -2223,29 +2223,29 @@ namespace Ricoh5A22Functions {
 		}
 	}
 
-	void JMPOp(Ricoh5A22& cpu, bool skipped) {
+	static void JMPOp(Ricoh5A22& cpu, bool skipped) {
 	    cpu.BufferPointer = (cpu.BufferPointer + cpu.regs.X) & 0xFFFF;
 	    cpu.BufferBank = cpu.regs.PB;
 	}
 
-	void JMLDCRead(Ricoh5A22& cpu, bool skipped) {
+	static void JMLDCRead(Ricoh5A22& cpu, bool skipped) {
 		Word address = cpu.BufferPointer + 2; 
 	    Byte value_read = cpu.read(get_pcpb(address, 0));
 	    cpu.BufferBank = value_read;
 	}
 
-	void PCOperandPBBank(Ricoh5A22& cpu, bool skipped) {
+	static void PCOperandPBBank(Ricoh5A22& cpu, bool skipped) {
 		cpu.regs.PC = cpu.BufferOperand;
 		cpu.regs.PB = cpu.BufferBank;
 	}
 
-	void PCAddressPBBank(Ricoh5A22& cpu, bool skipped) {
+	static void PCAddressPBBank(Ricoh5A22& cpu, bool skipped) {
 		cpu.regs.PC = cpu.BufferAddress;
 		cpu.regs.PB = cpu.BufferBank;
 	}
 
 	template <typename CPUMode, typename Direction, typename Changing, typename Flag>
-	void INDE(Ricoh5A22& cpu, bool skipped) {
+	static void INDE(Ricoh5A22& cpu, bool skipped) {
 		int8_t adding = 1;
 		if constexpr (std::is_same_v<Direction, Mode::Decrease>) {
 			adding = -1;
@@ -2316,7 +2316,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode>
-	void REP(Ricoh5A22& cpu, bool skipped) {
+	static void REP(Ricoh5A22& cpu, bool skipped) {
 		if constexpr (std::is_same_v<CPUMode, Mode::Native>) {
 			cpu.regs.P = cpu.regs.P & ~get_lo(cpu.BufferOperand);
 			if (cpu.get_flag_X()) {
@@ -2329,7 +2329,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode>
-	void SEP(Ricoh5A22& cpu, bool skipped) {
+	static void SEP(Ricoh5A22& cpu, bool skipped) {
 		if constexpr (std::is_same_v<CPUMode, Mode::Native>) {
 			cpu.regs.P = cpu.regs.P | get_lo(cpu.BufferOperand);
 			if (cpu.get_flag_X()) {
@@ -2342,7 +2342,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode, typename Register, bool PCIncrement = false>
-	void CopyRegister(Ricoh5A22& cpu, bool skipped) {
+	static void CopyRegister(Ricoh5A22& cpu, bool skipped) {
 		Word* reg = nullptr;
 		if constexpr (std::is_same_v<Register, Mode::RegisterX>) {
 			reg = &cpu.regs.X;
@@ -2405,98 +2405,98 @@ namespace Ricoh5A22Functions {
 		}
 	}
 
-	void DecrementS(Ricoh5A22& cpu, bool skipped) {
+	static void DecrementS(Ricoh5A22& cpu, bool skipped) {
 		if (!skipped) {
 			cpu.regs.S -= 1;
 		}
 	}
 
-	void DecrementSLow(Ricoh5A22& cpu, bool skipped) {
+	static void DecrementSLow(Ricoh5A22& cpu, bool skipped) {
 		cpu.regs.S = (0b1 << 8) | (uint8_t)(get_lo(cpu.regs.S) - 1);
 	}
 
-	void DecrementS2(Ricoh5A22& cpu, bool skipped) {
+	static void DecrementS2(Ricoh5A22& cpu, bool skipped) {
 		if (!skipped) {
 			cpu.regs.S -= 2;
 		}
 	}
 
-	void DecrementS2Low(Ricoh5A22& cpu, bool skipped) {
+	static void DecrementS2Low(Ricoh5A22& cpu, bool skipped) {
 		cpu.regs.S = (0b1 << 8) | (uint8_t)(get_lo(cpu.regs.S) - 2);
 	}
 
-	void DecrementS2PCAddress(Ricoh5A22& cpu, bool skipped) {
+	static void DecrementS2PCAddress(Ricoh5A22& cpu, bool skipped) {
 		if (!skipped) {
 			cpu.regs.S -= 2;
 			cpu.regs.PC = cpu.BufferAddress;
 		}
 	}
 
-	void DecrementS2LowPCAddress(Ricoh5A22& cpu, bool skipped) {
+	static void DecrementS2LowPCAddress(Ricoh5A22& cpu, bool skipped) {
 		cpu.regs.S = (0b1 << 8) | (uint8_t)(get_lo(cpu.regs.S) - 2);
 		cpu.regs.PC = cpu.BufferAddress;
 	}
 
-	void DecrementS3(Ricoh5A22& cpu, bool skipped) {
+	static void DecrementS3(Ricoh5A22& cpu, bool skipped) {
 		if (!skipped) {
 			cpu.regs.S -= 3;
 		}
 	}
 
-	void DecrementS3Low(Ricoh5A22& cpu, bool skipped) {
+	static void DecrementS3Low(Ricoh5A22& cpu, bool skipped) {
 		cpu.regs.S = (0b1 << 8) | (uint8_t)(get_lo(cpu.regs.S) - 3);
 	}
 
-	void DecrementS4(Ricoh5A22& cpu, bool skipped) {
+	static void DecrementS4(Ricoh5A22& cpu, bool skipped) {
 		if (!skipped) {
 			cpu.regs.S -= 4;
 		}
 	}
 
-	void DecrementS4Low(Ricoh5A22& cpu, bool skipped) {
+	static void DecrementS4Low(Ricoh5A22& cpu, bool skipped) {
 		cpu.regs.S = (0b1 << 8) | (uint8_t)(get_lo(cpu.regs.S) - 4);
 	}
 
-	void IncrementSNativeAndReadBank(Ricoh5A22& cpu, bool skipped) {
+	static void IncrementSNativeAndReadBank(Ricoh5A22& cpu, bool skipped) {
 		Word address = cpu.regs.S + 1;
 		cpu.BufferBank = cpu.read(get_pcpb(address, 0));
 		cpu.regs.S = address;
 	}
 
-	void IncrementS(Ricoh5A22& cpu, bool skipped) {
+	static void IncrementS(Ricoh5A22& cpu, bool skipped) {
 		if (!skipped) {
 			cpu.regs.S += 1;
 		}
 	}
 
-	void IncrementSLow(Ricoh5A22& cpu, bool skipped) {
+	static void IncrementSLow(Ricoh5A22& cpu, bool skipped) {
 		cpu.regs.S = (0b1 << 8) | (uint8_t)(get_lo(cpu.regs.S) + 1);
 	}
 
-	void IncrementS2(Ricoh5A22& cpu, bool skipped) {
+	static void IncrementS2(Ricoh5A22& cpu, bool skipped) {
 		if (!skipped) {
 			cpu.regs.S += 2;
 		}
 	}
 
-	void IncrementS2Low(Ricoh5A22& cpu, bool skipped) {
+	static void IncrementS2Low(Ricoh5A22& cpu, bool skipped) {
 		cpu.regs.S = (0b1 << 8) | (uint8_t)(get_lo(cpu.regs.S) + 2);
 	}
 
-	void IncrementS2PCAddress(Ricoh5A22& cpu, bool skipped) {
+	static void IncrementS2PCAddress(Ricoh5A22& cpu, bool skipped) {
 		if (!skipped) {
 			cpu.regs.S += 2;
 			cpu.regs.PC = cpu.BufferAddress;
 		}
 	}
 
-	void IncrementS2LowPCAddress(Ricoh5A22& cpu, bool skipped) {
+	static void IncrementS2LowPCAddress(Ricoh5A22& cpu, bool skipped) {
 		cpu.regs.S = (0b1 << 8) | (uint8_t)(get_lo(cpu.regs.S) + 2);
 		cpu.regs.PC = cpu.BufferAddress;
 	}
 
 	template <typename CPUMode>
-	void PHP(Ricoh5A22& cpu, bool skipped) {
+	static void PHP(Ricoh5A22& cpu, bool skipped) {
 		if constexpr (std::is_same_v<CPUMode, Mode::Native>) {
 			cpu.BufferOperand = (get_hi(cpu.BufferOperand) << 8) | (uint8_t)(cpu.regs.P);
 		} else {
@@ -2506,7 +2506,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode>
-	void STXIndex(Ricoh5A22& cpu, bool skipped) {
+	static void STXIndex(Ricoh5A22& cpu, bool skipped) {
 		if constexpr (std::is_same_v<CPUMode, Mode::Native>)  {
 			cpu.BufferAddress = cpu.BufferOperand + cpu.regs.Y + cpu.regs.D;
 		} else {
@@ -2520,7 +2520,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode>
-	void STYIndex(Ricoh5A22& cpu, bool skipped) {
+	static void STYIndex(Ricoh5A22& cpu, bool skipped) {
 		if constexpr (std::is_same_v<CPUMode, Mode::Native>)  {
 			cpu.BufferAddress = cpu.BufferOperand + cpu.regs.X + cpu.regs.D;
 		} else {
@@ -2533,17 +2533,17 @@ namespace Ricoh5A22Functions {
 		}
 	}
 
-	void JSRIndex(Ricoh5A22& cpu, bool skipped) {
+	static void JSRIndex(Ricoh5A22& cpu, bool skipped) {
 		cpu.BufferPointer += cpu.regs.X;
 		cpu.BufferBank = cpu.regs.PB;
 	}
 
-	void PCAddress(Ricoh5A22& cpu, bool skipped) {
+	static void PCAddress(Ricoh5A22& cpu, bool skipped) {
 		cpu.regs.PC = cpu.BufferAddress;
 	}
 
 	template <typename CPUMode>
-	void JSL(Ricoh5A22& cpu, bool skipped) {
+	static void JSL(Ricoh5A22& cpu, bool skipped) {
 		if constexpr (std::is_same_v<CPUMode, Mode::Native>) {
 			cpu.regs.S -= 3;
 			cpu.regs.PC = cpu.BufferAddress;
@@ -2556,7 +2556,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode, typename Register, typename Flag>
-	void PL(Ricoh5A22& cpu, bool skipped) {
+	static void PL(Ricoh5A22& cpu, bool skipped) {
 		Word* reg = nullptr;
 		if constexpr (std::is_same_v<Register, Mode::RegisterA>) {
 			reg = &cpu.regs.A;
@@ -2614,7 +2614,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode>
-	void PLP(Ricoh5A22& cpu, bool skipped) {
+	static void PLP(Ricoh5A22& cpu, bool skipped) {
 		if constexpr (std::is_same_v<CPUMode, Mode::Native>) {
 			cpu.regs.P = get_lo(cpu.BufferOperand);
 			if (cpu.get_flag_X()) {
@@ -2631,7 +2631,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode>
-	void PLB(Ricoh5A22& cpu, bool skipped) {
+	static void PLB(Ricoh5A22& cpu, bool skipped) {
 		cpu.regs.DB = cpu.BufferBank;
 		if ((cpu.regs.DB & 0x80) != 0) {
 			cpu.set_flag_N();
@@ -2646,7 +2646,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode>
-	void PLD(Ricoh5A22& cpu, bool skipped) {
+	static void PLD(Ricoh5A22& cpu, bool skipped) {
 		if constexpr (std::is_same_v<CPUMode, Mode::Native>) {
 			cpu.regs.S += 2;
 		} else {
@@ -2666,7 +2666,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode>
-	void RTS(Ricoh5A22& cpu, bool skipped) {
+	static void RTS(Ricoh5A22& cpu, bool skipped) {
 		if constexpr (std::is_same_v<CPUMode, Mode::Native>) {
 			cpu.regs.S += 1;
 		} else {
@@ -2676,7 +2676,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode>
-	void POperand(Ricoh5A22& cpu, bool skipped) {
+	static void POperand(Ricoh5A22& cpu, bool skipped) {
 		if constexpr (std::is_same_v<CPUMode, Mode::Native>) {
 			cpu.regs.P = cpu.BufferOperand;
 		} else {
@@ -2685,7 +2685,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode>
-	void RTI(Ricoh5A22& cpu, bool skipped) {
+	static void RTI(Ricoh5A22& cpu, bool skipped) {
 		// Note: cpu.regs.PB is already restored directly by the preceding
 		// Read<ReadFrom::Stack3, ReadTo::PB> micro-op in the native-mode
 		// opcode table (see the Read<> template's ReadTo::PB branch, which
@@ -2704,7 +2704,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template <typename CPUMode>
-	void RTL(Ricoh5A22& cpu, bool skipped) {
+	static void RTL(Ricoh5A22& cpu, bool skipped) {
 		// Note: cpu.regs.PB is already restored directly by the preceding
 		// Read<ReadFrom::Stack3, ReadTo::PB> micro-op (see RTI's note above).
 		if constexpr (std::is_same_v<CPUMode, Mode::Native>) {
@@ -2715,17 +2715,17 @@ namespace Ricoh5A22Functions {
 		cpu.regs.PC = (cpu.BufferOperand + 1);
 	}
 
-	void SetIUnsetD(Ricoh5A22& cpu, bool skipped) {
+	static void SetIUnsetD(Ricoh5A22& cpu, bool skipped) {
 		cpu.set_flag_I();
 		cpu.clear_flag_D();
 	}
 
-	void COP(Ricoh5A22& cpu, bool skipped) {
+	static void COP(Ricoh5A22& cpu, bool skipped) {
 		cpu.regs.PC = cpu.BufferAddress;
 		cpu.regs.PB = 0;
 	}
 
-	void PushStatusWithBreakFlag(Ricoh5A22& cpu, bool skipped) {
+	static void PushStatusWithBreakFlag(Ricoh5A22& cpu, bool skipped) {
 		Byte value = cpu.regs.P | 0x10;
 		Address address = 0x0100 | (uint8_t)(get_lo(cpu.regs.S) - 2);
 
@@ -2737,7 +2737,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template<typename CPUMode>
-	void SetVectorNMI(Ricoh5A22& cpu, bool skipped) {
+	static void SetVectorNMI(Ricoh5A22& cpu, bool skipped) {
 	    if constexpr (std::is_same_v<CPUMode, Mode::Native>) {
 	        cpu.Vector = 0xFFEA;
 	    } else {
@@ -2746,7 +2746,7 @@ namespace Ricoh5A22Functions {
 	}
 
 	template<typename CPUMode>
-	void SetVectorIRQ(Ricoh5A22& cpu, bool skipped) {
+	static void SetVectorIRQ(Ricoh5A22& cpu, bool skipped) {
 	    if constexpr (std::is_same_v<CPUMode, Mode::Native>) {
 	        cpu.Vector = 0xFFEE;
 	    } else {
@@ -2754,7 +2754,7 @@ namespace Ricoh5A22Functions {
 	    }
 	}
 
-	void PushStatusClearBreakFlag(Ricoh5A22& cpu, bool skipped) {
+	static void PushStatusClearBreakFlag(Ricoh5A22& cpu, bool skipped) {
 	    Byte value = cpu.regs.P & ~0x10;
 	    Address address = 0x0100 | (uint8_t)(get_lo(cpu.regs.S) - 2);
 	    if constexpr (SST_TEST) {
@@ -2767,38 +2767,38 @@ namespace Ricoh5A22Functions {
 
 namespace Ricoh5A22Predicates {
 
-	bool Never(Ricoh5A22& cpu) {
+	static bool Never(Ricoh5A22& cpu) {
 		PREDICATE_CHECK_ROUTINE
 		return false;
 	}
 
-	bool Even(Ricoh5A22& cpu) {
+	static bool Even(Ricoh5A22& cpu) {
 		PREDICATE_CHECK_ROUTINE
 		return ( (cpu.regs.PC & 0b1) == 0);
 	}
 
-	bool Odd(Ricoh5A22& cpu) {
+	static bool Odd(Ricoh5A22& cpu) {
 		PREDICATE_CHECK_ROUTINE
 		return ( (cpu.regs.PC & 0b1) == 1);
 	}
 
-	bool DLZero(Ricoh5A22& cpu) {
+	static bool DLZero(Ricoh5A22& cpu) {
 		PREDICATE_CHECK_ROUTINE
 		return get_lo(cpu.regs.D) == 0;
 	}
 
-	bool MFlagSet(Ricoh5A22& cpu) {
+	static bool MFlagSet(Ricoh5A22& cpu) {
 		PREDICATE_CHECK_ROUTINE
 		return cpu.get_flag_M();
 	}
 
-	bool XFlagSet(Ricoh5A22& cpu) {
+	static bool XFlagSet(Ricoh5A22& cpu) {
 		PREDICATE_CHECK_ROUTINE
 		return cpu.get_flag_X();
 	}
 
 	template <typename CPUMode = Mode::Native>
-	bool ReadingCondition(Ricoh5A22& cpu) {
+	static bool ReadingCondition(Ricoh5A22& cpu) {
 		PREDICATE_CHECK_ROUTINE
 		if constexpr (std::is_same_v<CPUMode, Mode::Native>) {
 			return (get_hi(cpu.BufferOrig) == get_hi(cpu.BufferPointer) && cpu.get_flag_X() == true);
@@ -2807,17 +2807,17 @@ namespace Ricoh5A22Predicates {
 		}
 	}
 
-	bool NoBranching(Ricoh5A22& cpu) {
+	static bool NoBranching(Ricoh5A22& cpu) {
 		PREDICATE_CHECK_ROUTINE
 		return !cpu.Branching;
 	}
 
-	bool NoBoundaryCrossed(Ricoh5A22& cpu) {
+	static bool NoBoundaryCrossed(Ricoh5A22& cpu) {
 		PREDICATE_CHECK_ROUTINE
 		return !cpu.BoundaryCrossed;
 	}
 
-	bool NoBranchingOrNoBoundaryCrossed(Ricoh5A22& cpu) {
+	static bool NoBranchingOrNoBoundaryCrossed(Ricoh5A22& cpu) {
 		PREDICATE_CHECK_ROUTINE
 		return !cpu.Branching || !cpu.BoundaryCrossed;
 	}

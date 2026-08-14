@@ -30,6 +30,8 @@
 #define HVBJOY_ADDRESS 0x4212
 #define JOY1L_ADDRESS 0x4218
 #define JOY1H_ADDRESS 0x4219
+#define WRIO_ADDRESS 0x4201
+#define RDIO_ADDRESS 0x4213
 
 // Interrupts
 #define OPCODE_NMI 0x100
@@ -71,6 +73,7 @@ struct CPURegisters {
 	Byte HTIMEL, HTIMEH;
 	Byte VTIMEL, VTIMEH;
 	Byte RDNMI, TIMEUP;
+	Byte WRIO = 0xFF; // Programmable I/O port; bit 7 doubles as the PPU counter latch line
 };
 
 class Ricoh5A22 final : public CPU {
@@ -126,6 +129,10 @@ public:
 			return renderer->get_joypad(addr.offset);
 		}
 
+		if (addr.offset == RDIO_ADDRESS) {
+			return mregs.WRIO;
+		}
+
 		// Miscellaneous
 		if (addr.offset == 0x4016) {
 			return 0x01;
@@ -142,6 +149,15 @@ public:
 		if (addr.offset == MEMSEL_ADDRESS) {
 			fastrom_enabled = value & 1;
 			set_fastrom_from_bus(fastrom_enabled);
+		}
+
+		if (addr.offset == WRIO_ADDRESS) {
+			bool old_bit7 = mregs.WRIO & 0x80;
+			bool new_bit7 = value & 0x80;
+			if (old_bit7 && !new_bit7 && ppu) {
+				ppu->latch_hv_counters();
+			}
+			mregs.WRIO = value;
 		}
 
 		// Multiplier
@@ -166,7 +182,7 @@ public:
 			uint16_t dividend_value = (divisor.WRDIVH << 8) | divisor.WRDIVL;
 			uint8_t divisor_value = divisor.WRDIVB;
 			uint16_t result = 0xFFFF;
-			uint16_t remainder = 0xFFFF;
+			uint16_t remainder = dividend_value;
 			if (divisor_value != 0) {
 				result = (unsigned int)(dividend_value) / (unsigned int)(divisor_value);
 				remainder = dividend_value % divisor_value;

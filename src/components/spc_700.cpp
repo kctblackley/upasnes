@@ -3,8 +3,177 @@
 #include <iostream>
 #include <filesystem>
 #include <cstdlib>
+#include <sstream>
+#include <iomanip>
+#include <cstdint>
 
-// Need to create APU bus mechanics!
+namespace {
+
+	std::string byte_hex(Byte b) {
+		std::ostringstream s;
+		s << std::uppercase
+		  << std::hex
+		  << std::setfill('0')
+		  << std::setw(2)
+		  << static_cast<unsigned>(b);
+		return s.str();
+	}
+
+	std::string word_hex(Word w) {
+		std::ostringstream s;
+		s << std::uppercase
+		  << std::hex
+		  << std::setfill('0')
+		  << std::setw(4)
+		  << static_cast<unsigned>(w);
+		return s.str();
+	}
+
+}
+
+Byte SPC700::trace_read(Address addr) const
+{
+	addr &= 0xFFFF;
+
+	if (addr >= 0xFD && addr <= 0xFF) {
+		// Timer output registers are destructive on a real read.
+		// Return their current value without clearing them.
+		return timers[addr - 0xFD].output;
+	}
+
+	if (addr >= 0xF4 && addr <= 0xF7) {
+		return cpu_to_spc_ports[addr - 0xF4];
+	}
+
+	if (ipl_rom_enabled && addr >= 0xFFC0) {
+		return ipl_rom[addr - 0xFFC0];
+	}
+
+	return bus->read(addr);
+}
+
+std::string SPC700::trace_operands(Byte opcode, Address pc) const
+{
+	const SPC700OpCodeInfo& info = spc700_opcode_info[opcode];
+
+	std::ostringstream out;
+
+	out << std::uppercase
+	    << std::hex
+	    << std::setfill('0');
+
+	// The opcode itself is byte 0, so only print the bytes following it.
+	for (unsigned i = 1; i < info.size; ++i) {
+		Address operand_pc =
+			static_cast<Address>((pc + i) & 0xFFFF);
+
+		Byte operand = trace_read(operand_pc);
+
+		out << " "
+		    << std::setw(2)
+		    << static_cast<unsigned>(operand);
+	}
+
+	return out.str();
+}
+
+void SPC700::log_instruction()
+{
+	if (BufferOpCode >= 256) {
+		return;
+	}
+
+	const Byte opcode =
+		static_cast<Byte>(BufferOpCode);
+
+	const SPC700OpCodeInfo& info =
+		spc700_opcode_info[opcode];
+
+	std::cout
+		<< "[SPC700] "
+
+		// PC
+		<< std::uppercase
+		<< std::hex
+		<< std::setfill('0')
+		<< std::setw(4)
+		<< static_cast<unsigned>(regs.PC)
+
+		<< " "
+
+		// Opcode + mnemonic
+		<< std::setw(2)
+		<< static_cast<unsigned>(opcode)
+		<< " "
+		<< info.mnemonic;
+
+	// Operand bytes
+	std::cout << trace_operands(opcode, regs.PC);
+
+	// Registers
+	std::cout
+		<< "  "
+		<< "A:"
+		<< std::setw(2)
+		<< static_cast<unsigned>(
+			static_cast<Byte>(regs.A))
+
+		<< " "
+		<< "X:"
+		<< std::setw(2)
+		<< static_cast<unsigned>(
+			static_cast<Byte>(regs.X))
+
+		<< " "
+		<< "Y:"
+		<< std::setw(2)
+		<< static_cast<unsigned>(
+			static_cast<Byte>(regs.Y))
+
+		<< " "
+		<< "S:"
+		<< std::setw(2)
+		<< static_cast<unsigned>(
+			static_cast<Byte>(regs.S))
+
+		<< " "
+		<< "P:"
+		<< std::setw(2)
+		<< static_cast<unsigned>(regs.P);
+
+	// SPC <-> SNES communication ports
+	std::cout
+		<< " "
+		<< "C2S(F4-F7):"
+		<< std::setw(2)
+		<< static_cast<unsigned>(cpu_to_spc_ports[0])
+		<< ","
+		<< std::setw(2)
+		<< static_cast<unsigned>(cpu_to_spc_ports[1])
+		<< ","
+		<< std::setw(2)
+		<< static_cast<unsigned>(cpu_to_spc_ports[2])
+		<< ","
+		<< std::setw(2)
+		<< static_cast<unsigned>(cpu_to_spc_ports[3])
+
+		<< " "
+		<< "S2C(F4-F7):"
+		<< std::setw(2)
+		<< static_cast<unsigned>(spc_to_cpu_ports[0])
+		<< ","
+		<< std::setw(2)
+		<< static_cast<unsigned>(spc_to_cpu_ports[1])
+		<< ","
+		<< std::setw(2)
+		<< static_cast<unsigned>(spc_to_cpu_ports[2])
+		<< ","
+		<< std::setw(2)
+		<< static_cast<unsigned>(spc_to_cpu_ports[3]);
+
+	std::cout << '\n';
+}
+
 SPC700::SPC700() : cycle(0), instruction_cycle(0) {
 	std::cout << "Loading SPC700 IPL ROM\n";
 
@@ -63,22 +232,9 @@ void SPC700::run_half_cycle() {
 void SPC700::accumulate(CycleCount delta) {
 	accumulated_cycles += delta;
 	while (accumulated_cycles > SPC_700_CYCLE_CONSTANT) {
-		if constexpr (SHOW_SPC_LOGS) {
-			if (instruction_cycle == 0) {
-				std::cout << "SPC700 PC=" << std::hex << (int)(regs.PC) << 
-				             "OPCODE=" << std::hex << (int)(BufferOpCode) << std::endl;
-				std::cout << " A=" << std::hex << (int)regs.A
-						  << " X=" << std::hex << (int)regs.X
-				          << " Y=" << std::hex << (int)regs.Y
-				          << " P=" << std::hex << (int)regs.P
-				          << " S=" << std::hex << (int)regs.S
-				    
-				          << "PC=" << std::hex << regs.PC
-						  << " ADDR=" << std::hex << (int)BufferAddress
-						  << " OPERAND=" << std::hex << (int)BufferOperand
-						  << " C2S(F4-F7)=" << std::hex << (int)cpu_to_spc_ports[0] << "," << (int)cpu_to_spc_ports[1] << "," << (int)cpu_to_spc_ports[2] << "," << (int)cpu_to_spc_ports[3]
-						  << " S2C(F4-F7)=" << std::hex << (int)spc_to_cpu_ports[0] << "," << (int)spc_to_cpu_ports[1] << "," << (int)spc_to_cpu_ports[2] << "," << (int)spc_to_cpu_ports[3]
-				          << "\n";
+		if constexpr (SHOW_LOGS) {
+			if (instruction_cycle == 0 && BufferOpCode < 256) {
+				log_instruction();
 			}
 		}
 		tick_component();
@@ -96,9 +252,9 @@ void SPC700::accumulate_dsp(CycleCount delta) {
 }
 
 void SPC700::tick_component() { // when the component is ticked, it does a half tick in actuality
-	tick_timer(0, 128 /* 512 */);
-	tick_timer(1, 128 /* 512 */);
-	tick_timer(2, 16 /* 64 */);
+	tick_timer(0, 128);
+	tick_timer(1, 128);
+	tick_timer(2, 16);
 	tick++;
 	run_half_cycle();
 	run_half_cycle();
@@ -112,6 +268,12 @@ void SPC700::reset() { // RUN IPL ROM HERE! MEMORY MAP THE IPL ROM!
 	regs.P = 0x00;
 	regs.PC = 0xFFC0;
 	accumulated_cycles = 0;
+
+	for (SPCTimer& timer : timers) {
+		timer = SPCTimer{};
+	}
+	ipl_rom_enabled = true;
+
 	BufferOpCode = read(regs.PC);
 	write(0xF0, 0x0A);
 	spc_to_cpu_ports[0] = 0xAA;

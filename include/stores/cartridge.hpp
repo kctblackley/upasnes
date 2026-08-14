@@ -6,6 +6,10 @@
 #include "lorom_mapper.hpp"
 #include "hirom_mapper.hpp"
 #include "exhirom_mapper.hpp"
+#include "superfx.hpp"
+#include "dsp.hpp"
+#include "sa1.hpp"
+#include "sdd1.hpp"
 
 class Ricoh5A22;
 
@@ -13,6 +17,39 @@ enum class MapperType {
 	LoROM,
 	HiROM,
 	ExHiROM
+};
+
+enum class Coprocessor {
+	None,
+	DSP,
+	SuperFX,
+	SA1,
+	SDD1
+};
+
+struct HardwareDatabaseEntry {
+	std::array<Byte, 4> game_code {};
+	Coprocessor coprocessor;
+
+	Word checksum;
+	Word complement;
+
+	DSPRevision dsp_revision = DSPRevision::None;
+	SuperFXRevision superfx_revision = SuperFXRevision::None;
+	SA1Revision sa1_revision = SA1Revision::None;
+	SDD1Revision sdd1_revision = SDD1Revision::None;
+};
+
+struct CartridgeHardware {
+	Coprocessor coprocessor = Coprocessor::None;
+
+	DSPRevision dsp_revision = DSPRevision::None;
+	SuperFXRevision superfx_revision = SuperFXRevision::None;
+	SA1Revision sa1_revision = SA1Revision::None;
+	SDD1Revision sdd1_revision = SDD1Revision::None;
+
+	bool has_ram = false;
+	bool has_battery = false;
 };
 
 struct CartridgeHeader {
@@ -27,10 +64,19 @@ struct CartridgeHeader {
 	Byte region;
 	Byte version;
 
+	Byte developer_id;
+
 	Word checksum;
  	Word complement;
 
 	Word reset_vector;
+
+	std::array<Byte, 2> maker_code {};
+	std::array<Byte, 4> game_code {};
+	Byte expansion_flash_size;
+	Byte expansion_ram_size;
+	Byte special_version;
+	Byte chipset_subtype;
 };
 
 struct MapperCandidate {
@@ -41,6 +87,21 @@ struct MapperCandidate {
 
 CartridgeHeader parse_header(const std::vector<Byte>& rom, size_t offset);
 int score(const MapperCandidate& candidate, size_t rom_size, const std::vector<Byte>& rom);
+void validate_hardware_mapping(const CartridgeHeader& h, int& score);
+const HardwareDatabaseEntry* find_hardware_database_entry(const CartridgeHeader& h);
+Coprocessor detect_coprocessor(const CartridgeHeader& h);
+void detect_dsp_revision(CartridgeHeader& h, const std::vector<Byte>& rom, CartridgeHardware& hardware);
+void detect_superfx_revision(CartridgeHeader& h, const std::vector<Byte>& rom, CartridgeHardware& hardware);
+void detect_sa1_revision(CartridgeHeader& h, const std::vector<Byte>& rom, CartridgeHardware& hardware);
+void detect_sdd1_revision(CartridgeHeader& h, const std::vector<Byte>& rom, CartridgeHardware& hardware);
+void detect_hardware(CartridgeHeader& h, CartridgeHardware& hardware, const std::vector<Byte>& rom);
+void detect_memory_features(const CartridgeHeader& h, CartridgeHardware& hardware);
+const char* mapper_to_string(MapperType mapper);
+const char* coprocessor_to_string(Coprocessor coprocessor);
+const char* dsp_revision_to_string(DSPRevision revision);
+const char* superfx_revision_to_string(SuperFXRevision revision);
+std::string byte_to_hex(Byte value);
+std::string word_to_hex(Word value);
 
 class Cartridge : public Store {
 public:
@@ -124,7 +185,7 @@ public:
 		std::vector<MapperCandidate> candidates;
 		
 		auto try_add = [&](MapperType type, size_t offset) {
-	        if (offset + 0x40 <= rom.size()) {   // header needs up to offset+0x3e
+	        if (offset >= 0x10 && offset + 0x40 <= rom.size()) {   // header needs up to offset+0x3e
 	            candidates.push_back({type, parse_header(rom, offset), 0});
 	        }
 	    };
@@ -185,6 +246,9 @@ public:
 		}
 
 		header = best->h;
+
+		detect_hardware(header, hardware, rom);
+
 		std::visit(
 		    [&](auto& m)
 		    {
@@ -198,10 +262,90 @@ public:
 
 		is_fastrom_cartridge = (header.map_mode & 0x10) != 0;
 		std::cout << header.title << "\n";
+
+		print_info();
 	}
 
 	void connect_cpu(Ricoh5A22* cpu) {
 	    std::visit([&](auto& m) { m.connect_cpu(cpu); }, mapper);
+	}
+
+	void print_info() const {
+		std::cout << "========================================\n";
+		std::cout << "Cartridge Information\n";
+		std::cout << "========================================\n";
+
+		std::cout << "Title:           " << header.title << '\n';
+		std::cout << "Mapper:          " << mapper_to_string(
+			std::visit(
+				[](const auto& m) -> MapperType {
+					using T = std::decay_t<decltype(m)>;
+
+					if constexpr (std::is_same_v<T, LoROM>)
+						return MapperType::LoROM;
+					else if constexpr (std::is_same_v<T, HiROM>)
+						return MapperType::HiROM;
+					else
+						return MapperType::ExHiROM;
+				},
+				mapper
+			)
+		) << '\n';
+
+		std::cout << "FastROM:         "
+		          << ((header.map_mode & 0x10) ? "Yes" : "No")
+		          << '\n';
+
+		std::cout << "Map mode:        " << byte_to_hex(header.map_mode) << '\n';
+		std::cout << "Cartridge type:  " << byte_to_hex(header.cartridge_type) << '\n';
+		std::cout << "ROM size field:  " << byte_to_hex(header.rom_size) << '\n';
+		std::cout << "RAM size field:  " << byte_to_hex(header.ram_size) << '\n';
+		std::cout << "Region:          " << static_cast<unsigned>(header.region) << '\n';
+		std::cout << "Version:         " << static_cast<unsigned>(header.version) << '\n';
+
+		std::cout << "Coprocessor:     "
+		          << coprocessor_to_string(hardware.coprocessor)
+		          << '\n';
+
+		switch (hardware.coprocessor) {
+		case Coprocessor::DSP:
+			std::cout << "DSP revision:    "
+			          << dsp_revision_to_string(hardware.dsp_revision)
+			          << '\n';
+			break;
+
+		case Coprocessor::SuperFX:
+			std::cout << "Super FX rev:    "
+			          << superfx_revision_to_string(hardware.superfx_revision)
+			          << '\n';
+			break;
+
+		default:
+			break;
+		}
+
+		std::cout << "Checksum:        " << word_to_hex(header.checksum) << '\n';
+		std::cout << "Complement:      " << word_to_hex(header.complement) << '\n';
+		std::cout << "Reset vector:    " << word_to_hex(header.reset_vector) << '\n';
+
+		
+		std::cout << "Game code:       \n";
+		for (auto& c : header.game_code) {
+			std::cout << std::hex << (int)c << " ";
+		}
+		std::cout << "\n";
+
+		std::cout << "Maker code:      \n";
+		for (auto& c : header.maker_code) {
+			std::cout << std::hex << (int)c << " ";
+		}
+		std::cout << "\n";
+
+		std::cout << "Chipset subtype: "
+		          << byte_to_hex(header.chipset_subtype)
+		          << '\n';
+
+		std::cout << "========================================\n";
 	}
 
 private:
@@ -210,6 +354,7 @@ private:
 	bool fastrom_enabled = false;
 	CycleCount penalty_value = 0;
 	CartridgeHeader header;
+	CartridgeHardware hardware;
 	
 	std::variant<LoROM, HiROM, ExHiROM> mapper;
 

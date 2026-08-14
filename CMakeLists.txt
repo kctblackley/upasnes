@@ -34,9 +34,24 @@ set(SNES_SOURCES
 find_package(SDL3 REQUIRED CONFIG)
 add_executable(snes_emulator ${SNES_SOURCES})
 
+option(ENABLE_SANITIZERS "Enable sanitizers" OFF)
+
+if(ENABLE_SANITIZERS)
+    target_compile_options(snes_emulator PRIVATE
+        -fsanitize=address,undefined
+        -fno-omit-frame-pointer
+        -g
+    )
+
+    target_link_options(snes_emulator PRIVATE
+        -fsanitize=address,undefined
+    )
+endif()
+
 target_include_directories(snes_emulator PRIVATE
     ${CMAKE_SOURCE_DIR}/include/stores
     ${CMAKE_SOURCE_DIR}/include/components
+    ${CMAKE_SOURCE_DIR}/include/coprocessors
     ${CMAKE_SOURCE_DIR}/include/misc
     ${CMAKE_SOURCE_DIR}/include/cpu_operations
     ${CMAKE_SOURCE_DIR}/include/mappers

@@ -2,6 +2,7 @@
 #include <chrono>
 #include <thread>
 #include <iostream>
+#include <algorithm>
 
 SNES::SNES() : master_cycle(0) {
 	// Create component and link to Bus
@@ -17,6 +18,7 @@ SNES::SNES() : master_cycle(0) {
 	ppu = static_cast<PPU*>(devices[1].get());
 
 	spc_700 = std::make_unique<SPC700>();
+
 	renderer = std::make_unique<Renderer>();
 
 	ricoh_5a22->connect_renderer(renderer.get());
@@ -34,10 +36,6 @@ SNES::SNES() : master_cycle(0) {
 	bus->set_wait_callback([this](CycleCount cycles) {
 		ricoh_5a22->add_cycles(cycles);
 	});
-
-	// TODO: DMA controller is being rewritten from scratch. Once it exists again,
-	// reconnect it to the cpu/bus/ppu here and restore its wait-callback, which
-	// previously advanced the PPU and SPC700 in lockstep while a DMA was in progress.
 }
 
 void SNES::load_cartridge(const std::string& directory) {
@@ -48,12 +46,11 @@ void SNES::load_cartridge(const std::string& directory) {
 
 void SNES::tick_snes() {
 	if (ricoh_5a22->get_cycle() <= ppu->get_cycle()) {
-		master_cycle = ricoh_5a22->get_cycle();
 		ricoh_5a22->tick_component();
 	} else {
-		master_cycle = ppu->get_cycle();
 		ppu->tick_component();
 	}
+	master_cycle = std::min(ricoh_5a22->get_cycle(), ppu->get_cycle());
 }
 
 void SNES::poll() {
@@ -81,13 +78,12 @@ void SNES::run() {
 	CycleCount prev_cpu_cycle = ricoh_5a22->get_cycle();
 
 	while (running) {
-
-		CycleCount prev_master_cycle = master_cycle;
 		
 		tick_snes();
 
-		CycleCount delta = master_cycle -  prev_master_cycle;
-		
+		CycleCount new_cpu_cycle = ricoh_5a22->get_cycle();
+		CycleCount delta = new_cpu_cycle - prev_cpu_cycle;
+		prev_cpu_cycle = new_cpu_cycle;
 		spc_700->accumulate(delta);
 		spc_700->accumulate_dsp(delta);
 

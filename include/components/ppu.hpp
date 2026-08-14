@@ -19,6 +19,7 @@
 
 class Ricoh5A22;
 class Bus;
+class DMA;
 
 constexpr Byte PPU1_VERSION = 1;
 constexpr Byte PPU2_VERSION = 2;
@@ -115,6 +116,7 @@ public:
 	}
 
 	bool should_resolve(bool is_window, int value);
+	bool should_force_black(bool is_window, int value);
 	bool is_colour_math_window(int x);
 	bool resolve_main_screen_px(Pixel& px, bool is_window);
 	void resolve_sub_screen_px(Pixel& px, bool is_window);
@@ -446,12 +448,106 @@ public:
 	}
 
 	void communication_write(SNESAddress addr, Byte value) override {
+
+		if constexpr (LOG_PPU_REGISTER_WRITES) {
+			const char* reg_name = nullptr;
+
+			switch (addr.offset) {
+				// Display
+				case INIDISP_ADDRESS:  reg_name = "INIDISP"; break;
+				case OBJSEL_ADDRESS:   reg_name = "OBJSEL"; break;
+				case BGMODE_ADDRESS:   reg_name = "BGMODE"; break;
+				case MOSAIC_ADDRESS:   reg_name = "MOSAIC"; break;
+				case BG1SC_ADDRESS:    reg_name = "BG1SC"; break;
+				case BG2SC_ADDRESS:    reg_name = "BG2SC"; break;
+				case BG3SC_ADDRESS:    reg_name = "BG3SC"; break;
+				case BG4SC_ADDRESS:    reg_name = "BG4SC"; break;
+				case BG12NBA_ADDRESS:  reg_name = "BG12NBA"; break;
+				case BG34NBA_ADDRESS:  reg_name = "BG34NBA"; break;
+
+				// BG offsets
+				case BG1HOFS_ADDRESS:  if (bg_mode == 7) { reg_name = "M7HOFS"; } else { reg_name = "BG1HOFS"; } break;
+				case BG1VOFS_ADDRESS:  if (bg_mode == 7) { reg_name = "M7VOFS"; } else { reg_name = "BG1VOFS"; }  break;
+				case BG2HOFS_ADDRESS:  reg_name = "BG2HOFS"; break;
+				case BG2VOFS_ADDRESS:  reg_name = "BG2VOFS"; break;
+				case BG3HOFS_ADDRESS:  reg_name = "BG3HOFS"; break;
+				case BG3VOFS_ADDRESS:  reg_name = "BG3VOFS"; break;
+				case BG4HOFS_ADDRESS:  reg_name = "BG4HOFS"; break;
+				case BG4VOFS_ADDRESS:  reg_name = "BG4VOFS"; break;
+
+				// Screen designation
+				case TM_ADDRESS:       reg_name = "TM"; break;
+				case TS_ADDRESS:       reg_name = "TS"; break;
+				case SETINI_ADDRESS:   reg_name = "SETINI"; break;
+
+				// Mode 7
+				case M7SEL_ADDRESS:    reg_name = "M7SEL"; break;
+				case M7A_ADDRESS:      reg_name = "M7A"; break;
+				case M7B_ADDRESS:      reg_name = "M7B"; break;
+				case M7C_ADDRESS:      reg_name = "M7C"; break;
+				case M7D_ADDRESS:      reg_name = "M7D"; break;
+				case M7X_ADDRESS:      reg_name = "M7X"; break;
+				case M7Y_ADDRESS:      reg_name = "M7Y"; break;
+
+				// Windows
+				case W12SEL_ADDRESS:   reg_name = "W12SEL"; break;
+				case W34SEL_ADDRESS:   reg_name = "W34SEL"; break;
+				case WOBJSEL_ADDRESS:  reg_name = "WOBJSEL"; break;
+				case WH0_ADDRESS:      reg_name = "WH0"; break;
+				case WH1_ADDRESS:      reg_name = "WH1"; break;
+				case WH2_ADDRESS:      reg_name = "WH2"; break;
+				case WH3_ADDRESS:      reg_name = "WH3"; break;
+				case WBGLOG_ADDRESS:   reg_name = "WBGLOG"; break;
+				case WOBJLOG_ADDRESS:  reg_name = "WOBJLOG"; break;
+				case TMW_ADDRESS:      reg_name = "TMW"; break;
+				case TSW_ADDRESS:      reg_name = "TSW"; break;
+
+				// Colour math
+				case CGWSEL_ADDRESS:   reg_name = "CGWSEL"; break;
+				case CGADSUB_ADDRESS:  reg_name = "CGADSUB"; break;
+				case COLDATA_ADDRESS:  reg_name = "COLDATA"; break;
+
+				// OAM
+				case OAMADDL_ADDRESS:  reg_name = "OAMADDL"; break;
+				case OAMADDH_ADDRESS:  reg_name = "OAMADDH"; break;
+				case OAMDATA_ADDRESS:  reg_name = "OAMDATA"; break;
+
+				// CGRAM
+				case CGADD_ADDRESS:    reg_name = "CGADD"; break;
+				case CGDATA_ADDRESS:   reg_name = "CGDATA"; break;
+
+				// VRAM
+				case VMAIN_ADDRESS:    reg_name = "VMAIN"; break;
+				case VMADDL_ADDRESS:   reg_name = "VMADDL"; break;
+				case VMADDH_ADDRESS:   reg_name = "VMADDH"; break;
+				case VMDATAL_ADDRESS:  reg_name = "VMDATAL"; break;
+				case VMDATAH_ADDRESS:  reg_name = "VMDATAH"; break;
+
+				default:
+					break;
+			}
+
+			if (reg_name != nullptr) {
+				std::cout
+					<< "[PPU WRITE] "
+					<< std::left << std::setw(8) << reg_name
+					<< " <= 0x"
+					<< std::uppercase << std::hex
+					<< std::setfill('0') << std::setw(2)
+					<< static_cast<unsigned>(value)
+					<< std::dec << std::setfill(' ')
+					<< '\n';
+			}
+		}
+
 		// Display configuration
 		if (addr.offset == INIDISP_ADDRESS) {
 			bool new_forced_blank = ((value >> 7) & 0b1) == 1;
+
 			if (forced_blank && !new_forced_blank && vblank && vcounter == vblank_start) {
 				oam.oamadd = oam.reload << 1;
 			}
+
 			forced_blank = new_forced_blank;
 			brightness = value & 0x0F;
 		}
@@ -465,39 +561,97 @@ public:
 			bg3.character_size = (value >> 6) & 1;
 			bg4.character_size = (value >> 7) & 1;
 
+			//std::cout << "CHANGED BG MODE TO "
+			         // << std::dec << (int)(bg_mode) << "\n";
+
 			update_priority();
 		}
 
 		if (addr.offset == MOSAIC_ADDRESS) {
 			mosaic_size = (value >> 4) & 0xF;
-			if (value & 1) { bg1.mosaic = true; } else { bg1.mosaic = false; }
-			if (value & 2) { bg2.mosaic = true; } else { bg2.mosaic = false; }
-			if (value & 4) { bg3.mosaic = true; } else { bg3.mosaic = false; }
-			if (value & 8) { bg4.mosaic = true; } else { bg4.mosaic = false; }
+
+			if (value & 1) {
+				bg1.mosaic = true;
+			} else {
+				bg1.mosaic = false;
+			}
+
+			if (value & 2) {
+				bg2.mosaic = true;
+			} else {
+				bg2.mosaic = false;
+			}
+
+			if (value & 4) {
+				bg3.mosaic = true;
+			} else {
+				bg3.mosaic = false;
+			}
+
+			if (value & 8) {
+				bg4.mosaic = true;
+			} else {
+				bg4.mosaic = false;
+			}
 		}
 
 		if (addr.offset == BG12NBA_ADDRESS) {
 			set_chr_word_base(bg1, (value >> 0) & 0xF);
 			set_chr_word_base(bg2, (value >> 4) & 0xF);
 		}
+
 		if (addr.offset == BG34NBA_ADDRESS) {
 			set_chr_word_base(bg3, (value >> 0) & 0xF);
 			set_chr_word_base(bg4, (value >> 4) & 0xF);
 		}
 
-		if (addr.offset == BG1HOFS_ADDRESS) { set_bghofs(bg1, value); }
-		if (addr.offset == BG2HOFS_ADDRESS) { set_bghofs(bg2, value); }
-		if (addr.offset == BG3HOFS_ADDRESS) { set_bghofs(bg3, value); }
-		if (addr.offset == BG4HOFS_ADDRESS) { set_bghofs(bg4, value); }
-		if (addr.offset == BG1VOFS_ADDRESS) { set_bgvofs(bg1, value); }
-		if (addr.offset == BG2VOFS_ADDRESS) { set_bgvofs(bg2, value); }
-		if (addr.offset == BG3VOFS_ADDRESS) { set_bgvofs(bg3, value); }
-		if (addr.offset == BG4VOFS_ADDRESS) { set_bgvofs(bg4, value); }
+		if (addr.offset == BG1HOFS_ADDRESS) {
+			set_bghofs(bg1, value);
+		}
 
-		if (addr.offset == BG1SC_ADDRESS) { set_bgsc(bg1, value); }
-		if (addr.offset == BG2SC_ADDRESS) { set_bgsc(bg2, value); }
-		if (addr.offset == BG3SC_ADDRESS) { set_bgsc(bg3, value); }
-		if (addr.offset == BG4SC_ADDRESS) { set_bgsc(bg4, value); }
+		if (addr.offset == BG2HOFS_ADDRESS) {
+			set_bghofs(bg2, value);
+		}
+
+		if (addr.offset == BG3HOFS_ADDRESS) {
+			set_bghofs(bg3, value);
+		}
+
+		if (addr.offset == BG4HOFS_ADDRESS) {
+			set_bghofs(bg4, value);
+		}
+
+		if (addr.offset == BG1VOFS_ADDRESS) {
+			set_bgvofs(bg1, value);
+		}
+
+		if (addr.offset == BG2VOFS_ADDRESS) {
+			set_bgvofs(bg2, value);
+		}
+
+		if (addr.offset == BG3VOFS_ADDRESS) {
+			set_bgvofs(bg3, value);
+		}
+
+		if (addr.offset == BG4VOFS_ADDRESS) {
+			set_bgvofs(bg4, value);
+		}
+
+		if (addr.offset == BG1SC_ADDRESS) {
+			set_bgsc(bg1, value);
+		}
+
+		if (addr.offset == BG2SC_ADDRESS) {
+			set_bgsc(bg2, value);
+		}
+
+		if (addr.offset == BG3SC_ADDRESS) {
+			set_bgsc(bg3, value);
+		}
+
+		if (addr.offset == BG4SC_ADDRESS) {
+			set_bgsc(bg4, value);
+		}
 
 		if (addr.offset == TM_ADDRESS) {
 			bg1.main_screen = (value >> 0) & 1;
@@ -506,6 +660,7 @@ public:
 			bg4.main_screen = (value >> 3) & 1;
 			obj.main_screen = (value >> 4) & 1;
 		}
+
 		if (addr.offset == TS_ADDRESS) {
 			bg1.sub_screen = (value >> 0) & 1;
 			bg2.sub_screen = (value >> 1) & 1;
@@ -532,38 +687,46 @@ public:
 			mode7.non_tilemap_fill = (value >> 6) & 1;
 			mode7.tilemap_repeat = (value >> 7) & 1;
 		}
+
 		if (addr.offset == M7HOFS_ADDRESS) {
 			uint16_t val = (value << 8) | mode7.latch;
-		    mode7.m7hofs = signed_13(val);
-		    mode7.latch = value;
+			mode7.m7hofs = signed_13(val);
+			mode7.latch = value;
 		}
+
 		if (addr.offset == M7VOFS_ADDRESS) {
 			uint16_t val = (value << 8) | mode7.latch;
 			mode7.m7vofs = signed_13(val);
 			mode7.latch = value;
 		}
+
 		if (addr.offset == M7A_ADDRESS) {
 			mode7.m7a = (value << 8) | mode7.latch;
 			mode7.latch = value;
 		}
+
 		if (addr.offset == M7B_ADDRESS) {
 			mode7.m7b = (value << 8) | mode7.latch;
 			mode7.latch = value;
 			mode7.last_m7b = value;
 		}
+
 		if (addr.offset == M7C_ADDRESS) {
 			mode7.m7c = (value << 8) | mode7.latch;
 			mode7.latch = value;
 		}
+
 		if (addr.offset == M7D_ADDRESS) {
 			mode7.m7d = (value << 8) | mode7.latch;
 			mode7.latch = value;
 		}
+
 		if (addr.offset == M7X_ADDRESS) {
 			uint16_t val = (value << 8) | mode7.latch;
 			mode7.m7x = signed_13(val);
 			mode7.latch = value;
 		}
+
 		if (addr.offset == M7Y_ADDRESS) {
 			uint16_t val = (value << 8) | mode7.latch;
 			mode7.m7y = signed_13(val);
@@ -583,6 +746,7 @@ public:
 			bg2.window2_inverted = (value >> 6) & 1;
 			bg2.window2_enabled  = (value >> 7) & 1;
 		}
+
 		if (addr.offset == W34SEL_ADDRESS) {
 			bg3.window1_inverted = (value >> 0) & 1;
 			bg3.window1_enabled  = (value >> 1) & 1;
@@ -594,6 +758,7 @@ public:
 			bg4.window2_inverted = (value >> 6) & 1;
 			bg4.window2_enabled  = (value >> 7) & 1;
 		}
+
 		if (addr.offset == WOBJSEL_ADDRESS) {
 			obj.window1_inverted = (value >> 0) & 1;
 			obj.window1_enabled  = (value >> 1) & 1;
@@ -605,28 +770,35 @@ public:
 			col.window2_inverted = (value >> 6) & 1;
 			col.window2_enabled  = (value >> 7) & 1;
 		}
+
 		if (addr.offset == WH0_ADDRESS) {
 			window1.left_position = value;
 		}
+
 		if (addr.offset == WH1_ADDRESS) {
 			window1.right_position = value;
 		}
+
 		if (addr.offset == WH2_ADDRESS) {
 			window2.left_position = value;
 		}
+
 		if (addr.offset == WH3_ADDRESS) {
 			window2.right_position = value;
 		}
+
 		if (addr.offset == WBGLOG_ADDRESS) {
 			bg1.mask_logic = (value >> 0) & 3;
 			bg2.mask_logic = (value >> 2) & 3;
 			bg3.mask_logic = (value >> 4) & 3;
 			bg4.mask_logic = (value >> 6) & 3;
 		}
+
 		if (addr.offset == WOBJLOG_ADDRESS) {
 			obj.mask_logic = (value >> 0) & 3;
 			col.mask_logic = (value >> 2) & 3;
 		}
+
 		if (addr.offset == TMW_ADDRESS) {
 			bg1.windows_on_main_screen = (value >> 0) & 1;
 			bg2.windows_on_main_screen = (value >> 1) & 1;
@@ -634,6 +806,7 @@ public:
 			bg4.windows_on_main_screen = (value >> 3) & 1;
 			obj.windows_on_main_screen = (value >> 4) & 1;
 		}
+
 		if (addr.offset == TSW_ADDRESS) {
 			bg1.windows_on_subscreen = (value >> 0) & 1;
 			bg2.windows_on_subscreen = (value >> 1) & 1;
@@ -643,12 +816,14 @@ public:
 		}
 
 		// Colour Math
+
 		if (addr.offset == CGWSEL_ADDRESS) {
 			col.direct_colour_mode = (value >> 0) & 1;
 			col.addend = (value >> 1) & 1;
 			col.sub_screen_transparent_region = (value >> 4) & 3;
 			col.main_screen_black_region = (value >> 6) & 3;
 		}
+
 		if (addr.offset == CGADSUB_ADDRESS) {
 			bg1.enable_colour_math = (value >> 0) & 1;
 			bg2.enable_colour_math = (value >> 1) & 1;
@@ -660,37 +835,58 @@ public:
 			col.half_colour_math = (value >> 6) & 1;
 			col.operator_type = (value >> 7) & 1;
 		}
+
 		if (addr.offset == COLDATA_ADDRESS) {
 			Byte colour = value & 0x1F;
-			if (value & 0x20) { col.red = colour; }
-			if (value & 0x40) { col.green = colour; }
-			if (value & 0x80) { col.blue = colour; }
+
+			if (value & 0x20) {
+				col.red = colour;
+			}
+
+			if (value & 0x40) {
+				col.green = colour;
+			}
+
+			if (value & 0x80) {
+				col.blue = colour;
+			}
 		}
 
 		// OAM
+
 		if (addr.offset == OAMADDL_ADDRESS) {
 			oam.reload = (get_hi(oam.reload) << 8) | value;
 		}
+
 		if (addr.offset == OAMADDH_ADDRESS) {
 			oam.reload = ((value & 0b1) << 8) | get_lo(oam.reload);
 			oam.priority_rotation = ((value >> 7) == 1);
 		}
+
 		if (addr.offset == OAMADDL_ADDRESS || addr.offset == OAMADDH_ADDRESS) {
 			oam.oamadd = oam.reload << 1;
 		}
+
 		/*if (addr.offset == OAMDATA_ADDRESS) {
 			if (oam_accessible()) {
 				accepted++;
 			} else {
 				rejected++;
 			}
-			std::cout << "OAMDATA WRITE " << std::dec << (int)(accepted) << " ACCEPTED " << (int)(rejected) << " REJECTED\n";
+
+			std::cout << "OAMDATA WRITE "
+			          << std::dec << (int)(accepted)
+			          << " ACCEPTED "
+			          << (int)(rejected)
+			          << " REJECTED\n";
 		}*/
+
 		if (oam_accessible()) {
 			if (addr.offset == OAMDATA_ADDRESS) {
-				if ( (oam.oamadd & 1) == 0) {
+				if ((oam.oamadd & 1) == 0) {
 					oam.latch = value;
 				}
+
 				if (oam.oamadd < 0x200 && (oam.oamadd & 1) == 1) {
 					oam.data[oam.oamadd - 1] = oam.latch;
 					oam.data[oam.oamadd] = value;
@@ -698,14 +894,17 @@ public:
 					update_object(oam.oamadd - 1, oam.latch);
 					update_object(oam.oamadd, value);
 				}
+
 				if (oam.oamadd >= 0x200) {
 					Word idx = 0x200 + ((oam.oamadd - 0x200) & 0x1F);
 					oam.data[idx] = value;
 					update_object(idx, value);
 				}
+
 				oam.oamadd = (oam.oamadd + 1) & 0x3FF;
 			}
 		}
+
 		if (addr.offset == OBJSEL_ADDRESS) {
 			Byte name_base_address = value & 7;
 			Byte name_select = (value >> 3) & 3;
@@ -717,31 +916,49 @@ public:
 		}
 
 		// CGRAM
+
 		if (addr.offset == CGADD_ADDRESS) {
 			cgram.cgram_address = value;
 			cgram.cgram_byte = 0;
 		}
+
 		if (cgram_accessible()) {
 			if (addr.offset == CGDATA_ADDRESS) {
 				if (cgram.cgram_byte == 0) {
 					cgram.cgram_latch = value;
 				} else {
-					cgram.data[cgram.cgram_address] = ((value & 0x7F) << 8) | cgram.cgram_latch;
+					cgram.data[cgram.cgram_address] =
+						((value & 0x7F) << 8) | cgram.cgram_latch;
+
 					cgram.cgram_address++;
 				}
+
 				cgram.cgram_byte = !cgram.cgram_byte;
 			}
 		}
 
 		// VRAM
+
 		if (addr.offset == VMAIN_ADDRESS) {
 			switch (value & 3) {
-			// Uses word addresses
-			case 0: vram.address_increment = 1; break;
-			case 1: vram.address_increment = 32; break;
-			case 2: vram.address_increment = 128; break;
-			case 3: vram.address_increment = 128; break;
+				// Uses word addresses
+				case 0:
+					vram.address_increment = 1;
+					break;
+
+				case 1:
+					vram.address_increment = 32;
+					break;
+
+				case 2:
+					vram.address_increment = 128;
+					break;
+
+				case 3:
+					vram.address_increment = 128;
+					break;
 			}
+
 			vram.address_remapping = (value >> 2) & 3;
 			vram.address_increment_mode = (((value >> 7) & 0b1) == 1);
 		}
@@ -749,9 +966,11 @@ public:
 		if (addr.offset == VMADDL_ADDRESS) {
 			vram.vmadd = (get_hi(vram.vmadd) << 8) | value;
 		}
+
 		if (addr.offset == VMADDH_ADDRESS) {
 			vram.vmadd = ((value & 0x7F) << 8) | get_lo(vram.vmadd);
 		}
+
 		if (addr.offset == VMADDL_ADDRESS || addr.offset == VMADDH_ADDRESS) {
 			vram.vram_latch = vram.data[remap_vmadd(vram.vmadd)];
 		}
@@ -759,18 +978,29 @@ public:
 		if (vram_accessible()) {
 			if (addr.offset == VMDATAL_ADDRESS) {
 				Word mapped_addr = remap_vmadd(vram.vmadd);
-				vram.data[mapped_addr] = (get_hi(vram.data[mapped_addr]) << 8) | value;
+
+				vram.data[mapped_addr] =
+					(get_hi(vram.data[mapped_addr]) << 8) | value;
+
 				if (vram.address_increment_mode == 0) {
-					vram.vmadd = (vram.vmadd + vram.address_increment) & 0x7FFF;
+					vram.vmadd =
+						(vram.vmadd + vram.address_increment) & 0x7FFF;
 				}
+
 				invalidate_tile(mapped_addr);
 			}
+
 			if (addr.offset == VMDATAH_ADDRESS) {
 				Word mapped_addr = remap_vmadd(vram.vmadd);
-				vram.data[mapped_addr] = (value << 8) | get_lo(vram.data[mapped_addr]);
+
+				vram.data[mapped_addr] =
+					(value << 8) | get_lo(vram.data[mapped_addr]);
+
 				if (vram.address_increment_mode == 1) {
-					vram.vmadd = (vram.vmadd + vram.address_increment) & 0x7FFF;
+					vram.vmadd =
+						(vram.vmadd + vram.address_increment) & 0x7FFF;
 				}
+
 				invalidate_tile(mapped_addr);
 			}
 		}
@@ -800,6 +1030,95 @@ public:
 		return hcounter;
 	}
 
+	void latch_hv_counters() {
+		counter_latch = true;
+		ophct = hcounter;
+		opvct = vcounter;
+	}
+
+	void log_ppu_data() {
+		if constexpr (LOG_OAM) {
+			std::cout << "\n========== OAM ==========\n";
+
+			for (int i = 0; i < 0x400; i += 16) {
+				std::cout
+					<< std::uppercase
+					<< std::hex
+					<< std::setfill('0')
+					<< std::setw(3)
+					<< i
+					<< ": ";
+
+				for (int j = 0; j < 16; j++) {
+					std::cout
+						<< std::setw(2)
+						<< static_cast<unsigned>(oam.data[i + j])
+						<< ' ';
+				}
+
+				std::cout << '\n';
+			}
+
+			std::cout << std::dec;
+		}
+
+		if constexpr (LOG_CGRAM) {
+			std::cout << "\n========== CGRAM ==========\n";
+
+			for (int i = 0; i < 0x100; i += 8) {
+				std::cout
+					<< std::uppercase
+					<< std::hex
+					<< std::setfill('0')
+					<< std::setw(3)
+					<< i
+					<< ": ";
+
+				for (int j = 0; j < 8; j++) {
+					std::cout
+						<< std::setw(4)
+						<< static_cast<unsigned>(cgram.data[i + j])
+						<< ' ';
+				}
+
+				std::cout << '\n';
+			}
+
+			std::cout << std::dec;
+		}
+
+		if constexpr (LOG_VRAM) {
+			std::cout << "\n========== VRAM ==========\n";
+
+			for (int i = 0; i < 0x8000; i += 8) {
+				std::cout
+					<< std::uppercase
+					<< std::hex
+					<< std::setfill('0')
+					<< std::setw(4)
+					<< i
+					<< ": ";
+
+				for (int j = 0; j < 8; j++) {
+					std::cout
+						<< std::setw(4)
+						<< static_cast<unsigned>(vram.data[i + j])
+						<< ' ';
+				}
+
+				std::cout << '\n';
+			}
+
+			std::cout << std::dec;
+		}
+
+		std::cout << std::setfill(' ');
+	}
+
+	void connect_dma(DMA* dma) {
+		this->dma = dma;
+	}
+
 private:
 
 	Ricoh5A22* cpu = nullptr;
@@ -809,7 +1128,7 @@ private:
 	bool time_over = false;
 	bool range_over = false;
 	bool master_slave_mode = false;
-	Byte ppu1_version = 3;
+	Byte ppu1_version = 1; // 5C77 only ever reports version 1 on real hardware
 	Byte ppu2_version = 3;
 	Byte region = 0;
 
@@ -840,6 +1159,7 @@ private:
 	bool hblank = false;
 
 	Bus* bus = nullptr;
+	DMA* dma = nullptr;
 
 	bool field = false;
 	int visible_lines = 0;
@@ -884,6 +1204,7 @@ private:
 	// DEBUGGING OAMDATA
 	int accepted = 0;
 	int rejected = 0;
+	int hdma_transfer_lines = 0;
 
 	// Tile cache
 	DecodedTile tile_cache[NUM_BPP][MAX_TILES] {};

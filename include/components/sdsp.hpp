@@ -268,6 +268,9 @@ public:
 
 	// For DSP registers
 	void write(Byte address, Byte value) {
+		if (address & 0x80) {
+			return;
+		}
 		// Voies registers
 		if (address < 0x80 && (address & 0x0F) <= 0x09) {
 			voices[(address & 0xF0) >> 4].write(address & 0xF, value);
@@ -481,3 +484,4 @@ private:
 
 	  long dropped_pushes = 0;
 };
+

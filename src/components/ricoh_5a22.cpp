@@ -90,6 +90,7 @@ void Ricoh5A22::run_half_cycle() {
 				executed = 0;
 			}
 			const OpCodeInfo& info = ricoh_5a22_opcode_info[BufferOpCode];
+			std::cout << "[Ricoh5A22] ";
 			std::cout <<
 			 std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(regs.PB) << ":" <<
 			 std::hex << std::uppercase << std::setw(4) << std::setfill('0') << static_cast<int>(regs.PC) << " ";
@@ -163,12 +164,8 @@ void Ricoh5A22::tick_cpu() {
 }
 
 void Ricoh5A22::tick_component() { // when the component is ticked, it does a half tick in actuality
-	if (dma->dma_active() && dma->hdma_active) {
-		dma->tick_hdma();
-		this->add_cycles(1);
-		return;
-	}
-	if (dma->dma_active() && dma->gpdma_active) {
+	// HDMA will suspend both of these through use of a cycle-penalty mechanism (HDMA is not cycle-stepped, unlike GPDMA)
+	if (dma->gpdma_active) {
 		dma->tick_gpdma();
 		this->add_cycles(1);
 		return;
@@ -207,6 +204,8 @@ void Ricoh5A22::initialise() {
 	regs.S = 0x01FF;
 	regs.emulation_mode = true;
 	BufferOpCode = read(regs.PC);
+
+	cycle = 0;
 	
 	mregs.RDNMI = mregs.RDNMI & 0x7F;
 	mregs.TIMEUP = mregs.TIMEUP & 0x7F;
@@ -215,6 +214,7 @@ void Ricoh5A22::initialise() {
 	mregs.HTIMEL = 0xFF;
 	mregs.HTIMEH = 0x01;
 	mregs.NMITIMEN = 0x00;
+	mregs.WRIO = 0xFF;
 
 	cycle = 0;
 	return;

@@ -38,6 +38,7 @@ Bus::~Bus() = default;
 void Bus::connect_cpu(Ricoh5A22* cpu) {
 	this->cpu = cpu;
 	cpu->connect_dma(dma.get());
+	dma->give_dma_access_to_cpu(cpu);
 }
 
 void Bus::connect_apu(SPC700* apu) {
@@ -46,6 +47,8 @@ void Bus::connect_apu(SPC700* apu) {
 
 void Bus::connect_ppu(PPU* ppu) {
 	this->ppu = ppu;
+	dma->connect_ppu(ppu);
+	ppu->connect_dma(dma.get());
 }
 
 void Bus::set_wait_callback(WaitCallback callback) {

@@ -5,27 +5,27 @@
 // TO-DO WHEN COMPLETED, ORDER ALL Instruction<SPC700>S BY OPCODE
 
 namespace SPC700Predicates {
-	bool NoJump(SPC700& cpu) {
+	static bool NoJump(SPC700& cpu) {
 		return !cpu.BufferJump;
 	}
 }
 
 namespace SPC700SpecialFunctions {
-	void Sleep(SPC700& cpu, bool skipped) {
+	static void Sleep(SPC700& cpu, bool skipped) {
 		return;
 	}
 
-	void Stop(SPC700& cpu, bool skipped) {
+	static void Stop(SPC700& cpu, bool skipped) {
 		return;
 	}
 }
 
 namespace SPC700Functions {
-	Word ya(SPC700& cpu) {
+	static Word ya(SPC700& cpu) {
 		return ((uint8_t)(cpu.regs.Y) << 8) | get_lo(cpu.regs.A);
 	}
 
-	void SetNZ(SPC700& cpu, bool skipped, Word value) {
+	static void SetNZ(SPC700& cpu, bool skipped, Word value) {
 		if (value & 0x80) {
 			cpu.set_flag_N();
 		} else {
@@ -38,39 +38,39 @@ namespace SPC700Functions {
 		}
 	}
 
-	void SetFuncOperand(SPC700& cpu, bool skipped) {
+	static void SetFuncOperand(SPC700& cpu, bool skipped) {
 		cpu.BufferAddress = (cpu.BufferOperand | ((cpu.regs.P & 0x20) << 3));
 	}
 
-	void SetFuncOperandPlusX(SPC700& cpu, bool skipped) {
+	static void SetFuncOperandPlusX(SPC700& cpu, bool skipped) {
 		cpu.BufferAddress = (((cpu.BufferOperand + cpu.regs.X) & 0xFF) | ((cpu.regs.P & 0x20) << 3));
 	}
 
-	void SetFuncOperandPlusY(SPC700& cpu, bool skipped) {
+	static void SetFuncOperandPlusY(SPC700& cpu, bool skipped) {
 		cpu.BufferAddress = (((cpu.BufferOperand + cpu.regs.Y) & 0xFF) | ((cpu.regs.P & 0x20) << 3));
 	}
 
-	void SetFuncX(SPC700& cpu, bool skipped) {
-		cpu.BufferAddress = (cpu.regs.X | ((cpu.regs.P & 0x20) << 3));
+	static void SetFuncX(SPC700& cpu, bool skipped) {
+		cpu.BufferAddress = ((cpu.regs.X & 0xFF) | ((cpu.regs.P & 0x20) << 3));
 	}
 
-	void sub_func(SPC700& cpu, bool skipped, SubFunc func) {
+	static void sub_func(SPC700& cpu, bool skipped, SubFunc func) {
 		switch(func) {
 		case SubFunc::ClearISetX:
 			cpu.clear_flag_I();
 			cpu.set_flag_X();
 			break;
 		case SubFunc::SetNZFlagRegisterA:
-			SPC700Functions::SetNZ(cpu, skipped, cpu.regs.A);
+			SPC700Functions::SetNZ(cpu, skipped, (uint8_t)cpu.regs.A);
 			break;
 		case SubFunc::SetNZFlagRegisterYA:
-			SPC700Functions::SetNZ(cpu, skipped, cpu.regs.Y);
+			SPC700Functions::SetNZ(cpu, skipped, (uint8_t)cpu.regs.Y);
 			break;
 		case SubFunc::SetNZFlagRegisterX:
-			SPC700Functions::SetNZ(cpu, skipped, cpu.regs.X);
+			SPC700Functions::SetNZ(cpu, skipped, (uint8_t)cpu.regs.X);
 			break;
 		case SubFunc::SetNZFlagRegisterY:
-			SPC700Functions::SetNZ(cpu, skipped, cpu.regs.Y);
+			SPC700Functions::SetNZ(cpu, skipped, (uint8_t)cpu.regs.Y);
 			break;
 		case SubFunc::SetNZFlagOperand:
 			SPC700Functions::SetNZ(cpu, skipped, (uint8_t)cpu.BufferOperand);
@@ -90,33 +90,33 @@ namespace SPC700Functions {
 		}
 	}
 
-	void NOP(SPC700& cpu, bool skipped) {
+	static void NOP(SPC700& cpu, bool skipped) {
 		return;
 	}
 
 	template <SubFunc func = SubFunc::None>
-	void IncrementPC(SPC700& cpu, bool skipped) {
+	static void IncrementPC(SPC700& cpu, bool skipped) {
 		cpu.regs.PC++;
 		sub_func(cpu, skipped, func);
 	}
 
-	void Next(SPC700& cpu, bool skipped) {
+	static void Next(SPC700& cpu, bool skipped) {
 		cpu.BufferOpCode = cpu.read(cpu.regs.PC);
 	}
 
-	void CLRC(SPC700& cpu, bool skipped) { cpu.regs.P = (cpu.regs.P & ~0x01); }
-	void SETC(SPC700& cpu, bool skipped) { cpu.regs.P = (cpu.regs.P |  0x01); }
-	void CLRP(SPC700& cpu, bool skipped) { cpu.regs.P = (cpu.regs.P & ~0x20); }
-	void SETP(SPC700& cpu, bool skipped) { cpu.regs.P = (cpu.regs.P |  0x20); }
-	void DI(SPC700& cpu, bool skipped)   { cpu.regs.P = (cpu.regs.P & ~0x04); }
-	void EI(SPC700& cpu, bool skipped)   { cpu.regs.P = (cpu.regs.P |  0x04); }
+	static void CLRC(SPC700& cpu, bool skipped) { cpu.regs.P = (cpu.regs.P & ~0x01); }
+	static void SETC(SPC700& cpu, bool skipped) { cpu.regs.P = (cpu.regs.P |  0x01); }
+	static void CLRP(SPC700& cpu, bool skipped) { cpu.regs.P = (cpu.regs.P & ~0x20); }
+	static void SETP(SPC700& cpu, bool skipped) { cpu.regs.P = (cpu.regs.P |  0x20); }
+	static void DI(SPC700& cpu, bool skipped)   { cpu.regs.P = (cpu.regs.P & ~0x04); }
+	static void EI(SPC700& cpu, bool skipped)   { cpu.regs.P = (cpu.regs.P |  0x04); }
 
-	void CLRV(SPC700& cpu, bool skipped) {
+	static void CLRV(SPC700& cpu, bool skipped) {
 		cpu.clear_flag_V();
 		cpu.clear_flag_H();
 	}
 
-	void NOTC(SPC700& cpu, bool skipped) {
+	static void NOTC(SPC700& cpu, bool skipped) {
 		if (cpu.get_flag_C() ^ 1) {
 			cpu.set_flag_C();
 		} else {
@@ -125,7 +125,7 @@ namespace SPC700Functions {
 	}
 
 	template <typename From, typename To>
-	void Read(SPC700& cpu, bool skipped) {
+	static void Read(SPC700& cpu, bool skipped) {
 		Word address;
 
 		// read from...
@@ -146,8 +146,8 @@ namespace SPC700Functions {
 		if constexpr (std::is_same_v<From, ReadFrom::Address>)     { address = cpu.BufferAddress; }
 		if constexpr (std::is_same_v<From, ReadFrom::Address1FFF>) { address = cpu.BufferAddress & 0x1FFF; }
 
-		if constexpr (std::is_same_v<From, ReadFrom::XPSW>) { address = (cpu.regs.X | ((cpu.regs.P & 0x20) << 3)); }
-		if constexpr (std::is_same_v<From, ReadFrom::YPSW>) { address = (cpu.regs.Y | ((cpu.regs.P & 0x20) << 3)); }
+		if constexpr (std::is_same_v<From, ReadFrom::XPSW>) { address = ((cpu.regs.X & 0xFF) | ((cpu.regs.P & 0x20) << 3)); }
+		if constexpr (std::is_same_v<From, ReadFrom::YPSW>) { address = ((cpu.regs.Y & 0xFF) | ((cpu.regs.P & 0x20) << 3)); }
 		if constexpr (std::is_same_v<From, ReadFrom::AddressPlusOnePSW>) { address = ((cpu.BufferAddress + 1) & 0xFF) | ((cpu.regs.P & 0x20) << 3); }
 
 		Byte value = cpu.read(address);
@@ -174,7 +174,7 @@ namespace SPC700Functions {
 	}
 
 	template <typename Value, typename To>
-	void Write(SPC700& cpu, bool skipped) {
+	static void Write(SPC700& cpu, bool skipped) {
 		// write the value...
 		Byte value;
 		if constexpr (std::is_same_v<Value, WriteValue::P>)      { value = cpu.regs.P; }
@@ -197,7 +197,7 @@ namespace SPC700Functions {
 		if constexpr (std::is_same_v<To, WriteTo::Stack2>)      { address = 0x0100 | (uint8_t)(cpu.regs.S + 2); }
 		if constexpr (std::is_same_v<To, WriteTo::Address>)     { address = cpu.BufferAddress; }
 		if constexpr (std::is_same_v<To, WriteTo::Address1FFF>) { address = cpu.BufferAddress & 0x1FFF; }
-		if constexpr (std::is_same_v<To, WriteTo::XPSW>)        { address = (cpu.regs.X | ((cpu.regs.P & 0x20) << 3)); }
+		if constexpr (std::is_same_v<To, WriteTo::XPSW>)        { address = ((cpu.regs.X & 0xFF) | ((cpu.regs.P & 0x20) << 3)); }
 		if constexpr (std::is_same_v<To, WriteTo::Pointer>)     { address = cpu.BufferPointer; }
 		
 		if constexpr (std::is_same_v<To, WriteTo::AddressPlusOnePSW>) { address = ((cpu.BufferAddress + 1) & 0xFF) | ((cpu.regs.P & 0x20) << 3); }
@@ -208,46 +208,46 @@ namespace SPC700Functions {
 	}
 
 	template <int value = 1, SubFunc func = SubFunc::None>
-	void DecrementS(SPC700& cpu, bool skipped) {
+	static void DecrementS(SPC700& cpu, bool skipped) {
 		cpu.regs.S = (uint8_t)(cpu.regs.S - value);
 		SPC700Functions::sub_func(cpu, skipped, func);
 	}
 
 	template <int value = 1, SubFunc func = SubFunc::None>
-	void IncrementS(SPC700& cpu, bool skipped) {
+	static void IncrementS(SPC700& cpu, bool skipped) {
 		cpu.regs.S = (uint8_t)(cpu.regs.S + value);
 		SPC700Functions::sub_func(cpu, skipped, func);
 	}
 
 	template <int value = 1, SubFunc func = SubFunc::None>
-	void DecrementX(SPC700& cpu, bool skipped) {
+	static void DecrementX(SPC700& cpu, bool skipped) {
 		cpu.regs.X = (uint8_t)(cpu.regs.X - value);
 		SPC700Functions::sub_func(cpu, skipped, func);
 	}
 
 	template <int value = 1, SubFunc func = SubFunc::None>
-	void IncrementX(SPC700& cpu, bool skipped) {
+	static void IncrementX(SPC700& cpu, bool skipped) {
 		cpu.regs.X = (uint8_t)(cpu.regs.X + value);
 		SPC700Functions::sub_func(cpu, skipped, func);
 	}
 
 	template<int call = 0>
-	void TCallLow(SPC700& cpu, bool skipped) {
+	static void TCallLow(SPC700& cpu, bool skipped) {
 		Byte value = cpu.read(0xFFDE - (2 * call));
 		cpu.regs.PC = (get_hi(cpu.regs.PC) << 8) | value;
 	}
 
 	template<int call = 0>
-	void TCallHigh(SPC700& cpu, bool skipped) {
+	static void TCallHigh(SPC700& cpu, bool skipped) {
 		Byte value = cpu.read(0xFFDF - (2 * call));
 		cpu.regs.PC = (value << 8) | get_lo(cpu.regs.PC);
 	}
 
 	template <int step = 1>
-	void DAA(SPC700& cpu, bool skipped) {
+	static void DAA(SPC700& cpu, bool skipped) {
 		switch(step) {
 		case 1:
-			if (cpu.get_flag_C() || cpu.regs.A > 0x99) {
+			if (cpu.get_flag_C() || (cpu.regs.A & 0xFF) > 0x99) {
 				cpu.regs.A = (uint8_t)(cpu.regs.A + 0x60);
 				cpu.set_flag_C();
 			}
@@ -271,10 +271,10 @@ namespace SPC700Functions {
 	}
 
 	template <int step = 1>
-	void DAS(SPC700& cpu, bool skipped) {
+	static void DAS(SPC700& cpu, bool skipped) {
 		switch (step) {
 		case 1:
-			if (!cpu.get_flag_C() || cpu.regs.A > 0x99) {
+			if (!cpu.get_flag_C() || (cpu.regs.A & 0xFF) > 0x99) {
 				cpu.regs.A = (uint8_t)(cpu.regs.A - 0x60);
 				cpu.clear_flag_C();
 			}
@@ -298,7 +298,7 @@ namespace SPC700Functions {
 	}
 
 	template <SubFunc func = SubFunc::None>
-	void XCN(SPC700& cpu, bool skipped) {
+	static void XCN(SPC700& cpu, bool skipped) {
 		Byte value = cpu.regs.A;
 		value = (value >> 7) | (value << 1);
 		cpu.regs.A = (uint8_t)(value);
@@ -306,22 +306,24 @@ namespace SPC700Functions {
 	}
 
 	template<int step = 1, SubFunc func = SubFunc::None>
-	void DIV(SPC700& cpu, bool skipped) {
+	static void DIV(SPC700& cpu, bool skipped) {
 		switch(step) {
 		case 1:
-			if ((cpu.regs.Y & 15) >= (cpu.regs.X & 15)) {
-				cpu.set_flag_H();
-			} else {
-				cpu.clear_flag_H();
-			}
-			if (cpu.regs.Y >= cpu.regs.X) {
-				cpu.set_flag_V();
-			} else {
-				cpu.clear_flag_V();
-			}
-			cpu.DivYa = (uint32_t)(ya(cpu));
-			cpu.ShiftedX = (uint32_t)(get_lo(cpu.regs.X)) << 9;
-			break;
+		    if ((cpu.regs.A & 0x0F) >= (cpu.regs.X & 0x0F)) {
+		        cpu.set_flag_H();
+		    } else {
+		        cpu.clear_flag_H();
+		    }
+
+		    if (cpu.regs.Y >= cpu.regs.X) {
+		        cpu.set_flag_V();
+		    } else {
+		        cpu.clear_flag_V();
+		    }
+
+		    cpu.DivYa = static_cast<uint32_t>(ya(cpu));
+		    cpu.ShiftedX = static_cast<uint32_t>(cpu.regs.X) << 9;
+		    break;
 		case 2:
 			cpu.DivYa = cpu.DivYa << 1;
 			if (cpu.DivYa & 0x20000) {
@@ -345,10 +347,10 @@ namespace SPC700Functions {
 	// write the value...
 
 	template<int step = 1, SubFunc func = SubFunc::None>
-	void MUL(SPC700& cpu, bool skipped) {
+	static void MUL(SPC700& cpu, bool skipped) {
 		switch(step) {
 		case 1:
-			cpu.YABuffer = cpu.regs.Y * cpu.regs.A;
+			cpu.YABuffer = (cpu.regs.Y & 0xFF) * (cpu.regs.A & 0xFF);
 			break;
 		case 2:
 			cpu.regs.A = (uint8_t)get_lo(cpu.YABuffer);
@@ -359,29 +361,29 @@ namespace SPC700Functions {
 	}
 
 	template<int shift = 0>
-	void SET(SPC700& cpu, bool skipped) {
+	static void SET(SPC700& cpu, bool skipped) {
 		Byte mask = (1 << shift);
 		cpu.BufferOperand = ((cpu.BufferOperand & ~mask) | mask);
 	}
 
 	template<int shift = 0>
-	void CLR(SPC700& cpu, bool skipped) {
+	static void CLR(SPC700& cpu, bool skipped) {
 		Byte mask = (1 << shift);
 		cpu.BufferOperand = ((cpu.BufferOperand & ~mask) | 0x00);
 	}
 
 	template<int shift = 0>
-	void BBS(SPC700& cpu, bool skipped) {
+	static void BBS(SPC700& cpu, bool skipped) {
 		cpu.BufferJump = ((cpu.BufferOperand & (1 << shift)) == (1 << shift));
 	}
 
 	template<int shift = 0>
-	void BBC(SPC700& cpu, bool skipped) {
+	static void BBC(SPC700& cpu, bool skipped) {
 		cpu.BufferJump = ((cpu.BufferOperand & (1 << shift)) == (0 << shift));
 	}
 
 	template <int step = 0>
-	void Branch(SPC700& cpu, bool skipped) {
+	static void Branch(SPC700& cpu, bool skipped) {
 		switch(step) {
 		case 1:
 			cpu.BufferAddress = cpu.regs.PC + (int8_t)(cpu.BufferOperand);
@@ -394,57 +396,57 @@ namespace SPC700Functions {
 	}
 
 	template <int step = 0>
-	void MOV_5D(SPC700& cpu, bool skipped) {
+	static void MOV_5D(SPC700& cpu, bool skipped) {
 		cpu.regs.X = (uint8_t)cpu.regs.A;
 	}
 
 	template <int step = 0>
-	void MOV_7D(SPC700& cpu, bool skipped) {
+	static void MOV_7D(SPC700& cpu, bool skipped) {
 		cpu.regs.A = (uint8_t)cpu.regs.X;
 	}
 
 	template <int step = 0>
-	void MOV_Operand_To_Y(SPC700& cpu, bool skipped) {
+	static void MOV_Operand_To_Y(SPC700& cpu, bool skipped) {
 		cpu.regs.Y = (uint8_t)cpu.BufferOperand;
 	}
 
 	template <int step = 0>
-	void MOV_8F(SPC700& cpu, bool skipped) {
+	static void MOV_8F(SPC700& cpu, bool skipped) {
 		cpu.BufferOperand = (uint8_t)cpu.regs.A;
 	}
 
 	template <int step = 0>
-	void MOV_9D(SPC700& cpu, bool skipped) {
+	static void MOV_9D(SPC700& cpu, bool skipped) {
 		cpu.regs.X = (uint8_t)cpu.regs.S;
 	}
 
 	template <int step = 0>
-	void MOV_BD(SPC700& cpu, bool skipped) {
+	static void MOV_BD(SPC700& cpu, bool skipped) {
 		cpu.regs.S = (uint8_t)cpu.regs.X;
 	}
 
 	template <int step = 0>
-	void MOV_DD(SPC700& cpu, bool skipped) {
+	static void MOV_DD(SPC700& cpu, bool skipped) {
 		cpu.regs.A = (uint8_t)cpu.regs.Y;
 	}
 
 	template <int step = 0>
-	void MOV_FD(SPC700& cpu, bool skipped) {
+	static void MOV_FD(SPC700& cpu, bool skipped) {
 		cpu.regs.Y = (uint8_t)cpu.regs.A;
 	}
 
 	template <int step = 0>
-	void MOV_Operand_To_A(SPC700& cpu, bool skipped) {
+	static void MOV_Operand_To_A(SPC700& cpu, bool skipped) {
 		cpu.regs.A = (uint8_t)cpu.BufferOperand;
 	}
 
 	template <int step = 0>
-	void MOV_Operand_To_X(SPC700& cpu, bool skipped) {
+	static void MOV_Operand_To_X(SPC700& cpu, bool skipped) {
 		cpu.regs.X = (uint8_t)cpu.BufferOperand;
 	}
 
 	template <int code = 0, int step = 0, SubFunc func = SubFunc::None, bool pc_increment = false>
-	void MOV(SPC700& cpu, bool skipped) {
+	static void MOV(SPC700& cpu, bool skipped) {
 		if (pc_increment) { cpu.regs.PC++; }
 		switch (code) {
 		case 0x5D: SPC700Functions::MOV_5D<step>(cpu, skipped); break;
@@ -482,23 +484,23 @@ namespace SPC700Functions {
 	}
 
 	template <Bitwise bitwise = Bitwise::OR, typename ApplyTo, typename With, SubFunc func = SubFunc::None, bool increment_pc = false>
-	void BITWISE(SPC700& cpu, bool skipped) {
+	static void BITWISE(SPC700& cpu, bool skipped) {
 		Word val = 0x00;
 		if constexpr (increment_pc) {
 			cpu.regs.PC++;
 		}
 
-		if constexpr (std::is_same_v<ApplyTo, Value::A>) { val = cpu.regs.A; }
-		if constexpr (std::is_same_v<ApplyTo, Value::Operand0>) { val = cpu.BufferOperand0; }
-		if constexpr (std::is_same_v<ApplyTo, Value::Operand>) { val = cpu.BufferOperand; }
-		if constexpr (std::is_same_v<ApplyTo, Value::X>) { val = cpu.regs.X; }
-		if constexpr (std::is_same_v<ApplyTo, Value::Y>) { val = cpu.regs.Y; }
+		if constexpr (std::is_same_v<ApplyTo, Value::A>) { val = cpu.regs.A & 0xFF; }
+		if constexpr (std::is_same_v<ApplyTo, Value::Operand0>) { val = cpu.BufferOperand0 & 0xFF; }
+		if constexpr (std::is_same_v<ApplyTo, Value::Operand>) { val = cpu.BufferOperand & 0xFF; }
+		if constexpr (std::is_same_v<ApplyTo, Value::X>) { val = cpu.regs.X & 0xFF; }
+		if constexpr (std::is_same_v<ApplyTo, Value::Y>) { val = cpu.regs.Y & 0xFF; }
 
 		Byte with;
-		if constexpr (std::is_same_v<With, Value::Operand>)  { with = cpu.BufferOperand; }
-		if constexpr (std::is_same_v<With, Value::Operand1>) { with = cpu.BufferOperand1; }
-		if constexpr (std::is_same_v<With, Value::X>) { with = cpu.regs.X; }
-		if constexpr (std::is_same_v<With, Value::Y>) { with = cpu.regs.Y; }
+		if constexpr (std::is_same_v<With, Value::Operand>)  { with = cpu.BufferOperand & 0xFF; }
+		if constexpr (std::is_same_v<With, Value::Operand1>) { with = cpu.BufferOperand1 & 0xFF; }
+		if constexpr (std::is_same_v<With, Value::X>) { with = cpu.regs.X & 0xFF; }
+		if constexpr (std::is_same_v<With, Value::Y>) { with = cpu.regs.Y & 0xFF; }
 		
 		switch(bitwise) {
 		case Bitwise::OR:  val = val | with; break;
@@ -558,36 +560,36 @@ namespace SPC700Functions {
 			
 		}
 
-		if constexpr (std::is_same_v<ApplyTo, Value::A>) { cpu.regs.A = val; }
-		if constexpr (std::is_same_v<ApplyTo, Value::Operand0>) { cpu.BufferOperand0 = val; }
-		if constexpr (std::is_same_v<ApplyTo, Value::Operand>) { cpu.BufferOperand = val; }
-		if constexpr (std::is_same_v<ApplyTo, Value::X>) { cpu.regs.X = val; }
-		if constexpr (std::is_same_v<ApplyTo, Value::Y>) { cpu.regs.Y = val; }
+		if constexpr (std::is_same_v<ApplyTo, Value::A>) { cpu.regs.A = val & 0xFF; }
+		if constexpr (std::is_same_v<ApplyTo, Value::Operand0>) { cpu.BufferOperand0 = val & 0xFF; }
+		if constexpr (std::is_same_v<ApplyTo, Value::Operand>) { cpu.BufferOperand = val & 0xFF; }
+		if constexpr (std::is_same_v<ApplyTo, Value::X>) { cpu.regs.X = val & 0xFF; }
+		if constexpr (std::is_same_v<ApplyTo, Value::Y>) { cpu.regs.Y = val & 0xFF; }
 
 		SPC700Functions::sub_func(cpu, skipped, func);
 	}
 
-	void SetPointerXPlusAddress(SPC700& cpu, bool skipped) {
-		cpu.BufferPointer = cpu.regs.X + cpu.BufferAddress;
+	static void SetPointerXPlusAddress(SPC700& cpu, bool skipped) {
+		cpu.BufferPointer = (cpu.regs.X & 0xFF) + cpu.BufferAddress;
 	}
 
-	void SetPointerYPlusAddress(SPC700& cpu, bool skipped) {
-		cpu.BufferPointer = cpu.regs.Y + cpu.BufferAddress;
+	static void SetPointerYPlusAddress(SPC700& cpu, bool skipped) {
+		cpu.BufferPointer = (cpu.regs.Y & 0xFF) + cpu.BufferAddress;
 	}
 
 	template <int AndVal, int EqVal>
-	void Jump(SPC700& cpu, bool skipped) {
+	static void Jump(SPC700& cpu, bool skipped) {
 		cpu.regs.PC++;
 		cpu.BufferJump = ((cpu.regs.P & AndVal) == EqVal);
 	}
 
-	void JumpAlways(SPC700& cpu, bool skipped) {
+	static void JumpAlways(SPC700& cpu, bool skipped) {
 		cpu.regs.PC++;
 		cpu.BufferJump = true;
 	}
 
 	template <int step>
-	void DoJump(SPC700& cpu, bool skipped) {
+	static void DoJump(SPC700& cpu, bool skipped) {
 		switch(step) {
 		case 1:
 			cpu.BufferAddress = cpu.regs.PC + (int8_t)(cpu.BufferOperand);
@@ -600,55 +602,55 @@ namespace SPC700Functions {
 	}
 
 	template <SubFunc func = SubFunc::None>
-	void IncrementOperand(SPC700& cpu, bool skipped) {
+	static void IncrementOperand(SPC700& cpu, bool skipped) {
 		cpu.BufferOperand += 1;
 		sub_func(cpu, skipped, func);
 	}
 
 	template <SubFunc func = SubFunc::None>
-	void DecrementOperand(SPC700& cpu, bool skipped) {
+	static void DecrementOperand(SPC700& cpu, bool skipped) {
 		cpu.BufferOperand -= 1;
 		sub_func(cpu, skipped, func);
 	}
 
 	template <SubFunc func = SubFunc::None>
-	void IncrementRegA(SPC700& cpu, bool skipped) {
+	static void IncrementRegA(SPC700& cpu, bool skipped) {
 		cpu.regs.A = (cpu.regs.A + 1) & 0xFF;
 		sub_func(cpu, skipped, func);
 	}
 
 	template <SubFunc func = SubFunc::None>
-	void DecrementRegA(SPC700& cpu, bool skipped) {
+	static void DecrementRegA(SPC700& cpu, bool skipped) {
 		cpu.regs.A = (cpu.regs.A - 1) & 0xFF;
 		sub_func(cpu, skipped, func);
 	}
 
 	template <SubFunc func = SubFunc::None>
-	void IncrementRegX(SPC700& cpu, bool skipped) {
+	static void IncrementRegX(SPC700& cpu, bool skipped) {
 		cpu.regs.X = (cpu.regs.X + 1) & 0xFF;
 		sub_func(cpu, skipped, func);
 	}
 
 	template <SubFunc func = SubFunc::None>
-	void DecrementRegX(SPC700& cpu, bool skipped) {
+	static void DecrementRegX(SPC700& cpu, bool skipped) {
 		cpu.regs.X = (cpu.regs.X - 1) & 0xFF;
 		sub_func(cpu, skipped, func);
 	}
 
 	template <SubFunc func = SubFunc::None>
-	void IncrementRegY(SPC700& cpu, bool skipped) {
+	static void IncrementRegY(SPC700& cpu, bool skipped) {
 		cpu.regs.Y = (cpu.regs.Y + 1) & 0xFF;
 		sub_func(cpu, skipped, func);
 	}
 
 	template <SubFunc func = SubFunc::None>
-	void DecrementRegY(SPC700& cpu, bool skipped) {
+	static void DecrementRegY(SPC700& cpu, bool skipped) {
 		cpu.regs.Y = (cpu.regs.Y - 1) & 0xFF;
 		sub_func(cpu, skipped, func);
 	}
 
 	template <SubFunc func = SubFunc::None>
-	void ASL(SPC700& cpu, bool skipped) {
+	static void ASL(SPC700& cpu, bool skipped) {
 		if (cpu.BufferOperand & 0x80) {
 			cpu.set_flag_C();
 		} else {
@@ -661,7 +663,7 @@ namespace SPC700Functions {
 	}
 
 	template <SubFunc func = SubFunc::None>
-	void ASL_A(SPC700& cpu, bool skipped) {
+	static void ASL_A(SPC700& cpu, bool skipped) {
 		if (cpu.regs.A & 0x80) {
 			cpu.set_flag_C();
 		} else {
@@ -674,7 +676,7 @@ namespace SPC700Functions {
 	}
 
 	template <SubFunc func = SubFunc::None>
-	void LSR(SPC700& cpu, bool skipped) {
+	static void LSR(SPC700& cpu, bool skipped) {
 		if (cpu.BufferOperand & 0x01) {
 			cpu.set_flag_C();
 		} else {
@@ -687,7 +689,7 @@ namespace SPC700Functions {
 	}
 
 	template <SubFunc func = SubFunc::None>
-	void LSR_A(SPC700& cpu, bool skipped) {
+	static void LSR_A(SPC700& cpu, bool skipped) {
 		if (cpu.regs.A & 0x01) {
 			cpu.set_flag_C();
 		} else {
@@ -700,7 +702,7 @@ namespace SPC700Functions {
 	}
 
 	template <SubFunc func = SubFunc::None>
-	void ROL(SPC700& cpu, bool skipped) {
+	static void ROL(SPC700& cpu, bool skipped) {
 		cpu.BufferTmp = cpu.get_flag_C();
 		if (cpu.BufferOperand & 0x80) {
 			cpu.set_flag_C();
@@ -713,7 +715,7 @@ namespace SPC700Functions {
 	}
 
 	template <SubFunc func = SubFunc::None>
-	void ROL_A(SPC700& cpu, bool skipped) {
+	static void ROL_A(SPC700& cpu, bool skipped) {
 		cpu.BufferTmp = cpu.get_flag_C();
 		if (cpu.regs.A & 0x80) {
 			cpu.set_flag_C();
@@ -726,7 +728,7 @@ namespace SPC700Functions {
 	}
 
 	template <SubFunc func = SubFunc::None>
-	void ROR(SPC700& cpu, bool skipped) {
+	static void ROR(SPC700& cpu, bool skipped) {
 		cpu.BufferTmp = (cpu.get_flag_C() << 7);
 		if (cpu.BufferOperand & 0x01) {
 			cpu.set_flag_C();
@@ -739,7 +741,7 @@ namespace SPC700Functions {
 	}
 
 	template <SubFunc func = SubFunc::None>
-	void ROR_A(SPC700& cpu, bool skipped) {
+	static void ROR_A(SPC700& cpu, bool skipped) {
 		cpu.BufferTmp = (cpu.get_flag_C() << 7);
 		if (cpu.regs.A & 0x01) {
 			cpu.set_flag_C();
@@ -751,11 +753,11 @@ namespace SPC700Functions {
 		sub_func(cpu, skipped, func);
 	}
 
-	void SetAddressXPSW(SPC700& cpu, bool skipped) {
-		cpu.BufferAddress = (cpu.regs.X | ((cpu.regs.P & 0x20) << 3));
+	static void SetAddressXPSW(SPC700& cpu, bool skipped) {
+		cpu.BufferAddress = ((cpu.regs.X & 0xFF) | ((cpu.regs.P & 0x20) << 3));
 	}
 
-	void OR1Neq(SPC700& cpu, bool skipped) {
+	static void OR1Neq(SPC700& cpu, bool skipped) {
 		Byte bit = cpu.BufferAddress >> 13;
 		bool flag = cpu.get_flag_C();
 		if (flag || (cpu.BufferOperand & (1 << bit)) != 0) {
@@ -765,7 +767,7 @@ namespace SPC700Functions {
 		}
 	}
 
-	void OR1Eq(SPC700& cpu, bool skipped) {
+	static void OR1Eq(SPC700& cpu, bool skipped) {
 		Byte bit = cpu.BufferAddress >> 13;
 		bool flag = cpu.get_flag_C();
 		if (flag || (cpu.BufferOperand & (1 << bit)) == 0) {
@@ -775,7 +777,7 @@ namespace SPC700Functions {
 		}
 	}
 
-	void EOR1(SPC700& cpu, bool skipped) {
+	static void EOR1(SPC700& cpu, bool skipped) {
 		Byte bit = cpu.BufferAddress >> 13;
 		bool flag = cpu.get_flag_C();
 		if (flag ^ (cpu.BufferOperand & (1 << bit)) != 0) {
@@ -785,7 +787,7 @@ namespace SPC700Functions {
 		}
 	}
 
-	void AND1Neq(SPC700& cpu, bool skipped) {
+	static void AND1Neq(SPC700& cpu, bool skipped) {
 		Byte bit = cpu.BufferAddress >> 13;
 		bool flag = cpu.get_flag_C();
 		if (flag && (cpu.BufferOperand & (1 << bit)) != 0) {
@@ -795,7 +797,7 @@ namespace SPC700Functions {
 		}
 	}
 
-	void AND1Eq(SPC700& cpu, bool skipped) {
+	static void AND1Eq(SPC700& cpu, bool skipped) {
 		Byte bit = cpu.BufferAddress >> 13;
 		bool flag = cpu.get_flag_C();
 		if (flag && (cpu.BufferOperand & (1 << bit)) == 0) {
@@ -805,7 +807,7 @@ namespace SPC700Functions {
 		}
 	}
 
-	void MOV1_AA(SPC700& cpu, bool skipped) {
+	static void MOV1_AA(SPC700& cpu, bool skipped) {
 		Byte bit = cpu.BufferAddress >> 13;
 		if ((cpu.BufferOperand & (1 << bit)) != 0) {
 			cpu.set_flag_C();
@@ -814,7 +816,7 @@ namespace SPC700Functions {
 		}
 	}
 
-	void MOV1_CA(SPC700& cpu, bool skipped) {
+	static void MOV1_CA(SPC700& cpu, bool skipped) {
 		Byte bit = cpu.BufferAddress >> 13;
 		if (cpu.get_flag_C()) {
 			cpu.BufferOperand = cpu.BufferOperand | (1 << bit);
@@ -823,14 +825,14 @@ namespace SPC700Functions {
 		}
 	}
 
-	void NOT1(SPC700& cpu, bool skipped) {
+	static void NOT1(SPC700& cpu, bool skipped) {
 		Byte bit = cpu.BufferAddress >> 13;
 		cpu.BufferOperand = cpu.BufferOperand ^ (1 << bit);
 	}
 
-	void TSET1(SPC700& cpu, bool skipped) {
-		cpu.BufferTmp = cpu.regs.A - cpu.BufferOperand;
-		cpu.BufferOperand = cpu.BufferOperand | cpu.regs.A;
+	static void TSET1(SPC700& cpu, bool skipped) {
+		cpu.BufferTmp = (cpu.regs.A & 0xFF) - cpu.BufferOperand;
+		cpu.BufferOperand = cpu.BufferOperand | (cpu.regs.A & 0xFF);
 		if (cpu.BufferTmp == 0) {
 			cpu.set_flag_Z();
 		} else {
@@ -843,9 +845,9 @@ namespace SPC700Functions {
 		}
 	}
 
-	void TCLR1(SPC700& cpu, bool skipped) {
-		cpu.BufferTmp = cpu.regs.A - cpu.BufferOperand;
-		cpu.BufferOperand = cpu.BufferOperand & ~cpu.regs.A;
+	static void TCLR1(SPC700& cpu, bool skipped) {
+		cpu.BufferTmp = (cpu.regs.A & 0xFF) - cpu.BufferOperand;
+		cpu.BufferOperand = cpu.BufferOperand & ~(cpu.regs.A & 0xFF);
 		if (cpu.BufferTmp == 0) {
 			cpu.set_flag_Z();
 		} else {
@@ -859,10 +861,10 @@ namespace SPC700Functions {
 	}
 
 	template <int step>
-	void CBNE(SPC700& cpu, bool skipped) {
+	static void CBNE(SPC700& cpu, bool skipped) {
 		switch(step) {
 		case 1:
-			cpu.BufferJump = (cpu.regs.A != cpu.BufferOperand);
+			cpu.BufferJump = ((cpu.regs.A & 0xFF) != cpu.BufferOperand);
 			break;
 		case 2:
 			cpu.BufferAddress = cpu.regs.PC + (int8_t)(cpu.BufferOperand);
@@ -875,7 +877,7 @@ namespace SPC700Functions {
 	}
 
 	template <int step>
-	void DBNZ_6E(SPC700& cpu, bool skipped) {
+	static void DBNZ_6E(SPC700& cpu, bool skipped) {
 		switch(step) {
 		case 1:
 			cpu.BufferOperand -= 1;
@@ -892,7 +894,7 @@ namespace SPC700Functions {
 	}
 
 	template <int step>
-	void DBNZ_FE(SPC700& cpu, bool skipped) {
+	static void DBNZ_FE(SPC700& cpu, bool skipped) {
 		switch(step) {
 		case 1:
 			cpu.regs.PC += 1;
@@ -910,7 +912,7 @@ namespace SPC700Functions {
 	}
 
 	template <int step>
-	void DECW(SPC700& cpu, bool skipped) {
+	static void DECW(SPC700& cpu, bool skipped) {
 		switch(step) {
 		case 1:
 			cpu.BufferUnderflow = (cpu.BufferOperand == 0);
@@ -933,7 +935,7 @@ namespace SPC700Functions {
 	}
 
 	template <int step>
-	void INCW(SPC700& cpu, bool skipped) {
+	static void INCW(SPC700& cpu, bool skipped) {
 		Byte value = cpu.BufferOperand & 0xFF;
 		switch(step) {
 		case 1:
@@ -957,7 +959,7 @@ namespace SPC700Functions {
 		cpu.BufferOperand = value;
 	}
 
-	void CMPW(SPC700& cpu, bool skipped) {
+	static void CMPW(SPC700& cpu, bool skipped) {
 		int tmp = ya(cpu) - cpu.BufferOperand16;
 		if (tmp >= 0) {
 			cpu.set_flag_C();
@@ -977,7 +979,7 @@ namespace SPC700Functions {
 	}
 
 	template <bool subw>
-	void ADDSUBW(SPC700& cpu, bool skipped) {
+	static void ADDSUBW(SPC700& cpu, bool skipped) {
 
 		int tmp_r = 0;
 
@@ -987,7 +989,7 @@ namespace SPC700Functions {
 			tmp_r = cpu.BufferOperand16;
 		}
 
-		int tmp = (uint32_t)(cpu.regs.A) + (uint32_t)(get_lo(tmp_r)) + (subw ? 1 : 0);
+		int tmp = (uint32_t)(cpu.regs.A & 0xFF) + (uint32_t)(get_lo(tmp_r)) + (subw ? 1 : 0);
 		if (tmp > 0xFF) {
 			cpu.set_flag_C();
 		} else {
@@ -995,7 +997,7 @@ namespace SPC700Functions {
 		}
 		cpu.regs.A = (uint8_t)(tmp);
 
-		tmp = (uint32_t)(cpu.regs.Y) + (uint32_t)(get_hi(tmp_r)) + (uint32_t)(cpu.get_flag_C());
+		tmp = (uint32_t)(cpu.regs.Y & 0xFF) + (uint32_t)(get_hi(tmp_r)) + (uint32_t)(cpu.get_flag_C());
 
 		if (tmp > 0xFF) {
 			cpu.set_flag_C();
@@ -1003,13 +1005,13 @@ namespace SPC700Functions {
 			cpu.clear_flag_C();
 		}
 
-		if ((cpu.regs.Y ^ get_hi(tmp_r) ^ (uint8_t)(tmp)) & 0x10) {
+		if (((cpu.regs.Y & 0xFF) ^ get_hi(tmp_r) ^ (uint8_t)(tmp)) & 0x10) {
 			cpu.set_flag_H();
 		} else {
 			cpu.clear_flag_H();
 		}
 
-		if (~(cpu.regs.Y ^ get_hi(tmp_r)) & (cpu.regs.Y ^ (uint8_t)(tmp)) & 0x80) {
+		if (~((cpu.regs.Y & 0xFF) ^ get_hi(tmp_r)) & ((cpu.regs.Y & 0xFF) ^ (uint8_t)(tmp)) & 0x80) {
 			cpu.set_flag_V();
 		} else {
 			cpu.clear_flag_V();
@@ -1030,7 +1032,7 @@ namespace SPC700Functions {
 		}
 	}
 
-	void MOVW(SPC700& cpu, bool skipped) {
+	static void MOVW(SPC700& cpu, bool skipped) {
 		if (ya(cpu) & 0x8000) {
 			cpu.set_flag_N();
 		} else {
@@ -1044,7 +1046,7 @@ namespace SPC700Functions {
 	}
 
 	template <int step>
-	void CALL_3F(SPC700& cpu, bool skipped) {
+	static void CALL_3F(SPC700& cpu, bool skipped) {
 		switch(step) {
 		case 1:
 			cpu.regs.PC = (get_hi(cpu.regs.PC) << 8) | (get_lo(cpu.BufferAddress));
@@ -1055,16 +1057,16 @@ namespace SPC700Functions {
 		}
 	}
 
-	void PCALL(SPC700& cpu, bool skipped) {
+	static void PCALL(SPC700& cpu, bool skipped) {
 		cpu.regs.PC = 0xFF00 | get_lo(cpu.BufferAddress);
 	}
 
-	void SetPCToAddress(SPC700& cpu, bool skipped) {
+	static void SetPCToAddress(SPC700& cpu, bool skipped) {
 		cpu.regs.PC = cpu.BufferAddress;
 	}
 
-	void IncrementPointerByY(SPC700& cpu, bool skipped) {
-		cpu.BufferPointer = (cpu.BufferPointer + cpu.regs.Y) & 0xFFFF;
+	static void IncrementPointerByY(SPC700& cpu, bool skipped) {
+		cpu.BufferPointer = (cpu.BufferPointer + (cpu.regs.Y & 0xFF)) & 0xFFFF;
 	}
 }
 

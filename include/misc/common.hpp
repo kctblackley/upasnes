@@ -6,6 +6,7 @@
 #include <vector>
 #include <chrono>
 #include <SDL3/SDL.h>
+#include <sstream>
 
 #include "options.hpp"
 #include "utility.hpp"
@@ -29,6 +30,28 @@ typedef struct {
 // Macros
 #define RICOH_5A22_START ;
 #define RICOH_5A22_END ;
+
+static std::string hex8(uint8_t value)
+{
+    std::ostringstream ss;
+    ss << std::uppercase
+       << std::hex
+       << std::setfill('0')
+       << std::setw(2)
+       << static_cast<unsigned>(value);
+    return ss.str();
+}
+
+static std::string hex16(uint16_t value)
+{
+    std::ostringstream ss;
+    ss << std::uppercase
+       << std::hex
+       << std::setfill('0')
+       << std::setw(4)
+       << static_cast<unsigned>(value);
+    return ss.str();
+}
 
 inline SNESAddress split_address(Address address) {
 	Bank bank = (address & 0xFF0000) >> 16;

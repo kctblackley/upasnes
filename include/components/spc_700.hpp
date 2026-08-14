@@ -1,6 +1,7 @@
 #pragma once
 #include "cpu.hpp"
 #include "spc_700_optable.hpp"
+#include "spc_700_opcode_info.hpp"
 #include "common.hpp"
 #include "apubus.hpp"
 
@@ -235,7 +236,12 @@ public:
 
 	int sdsp_ticks_this_frame = 0;
 
+	void log_instruction();
+
 private:
+	Byte trace_read(Address addr) const;
+	std::string trace_operands(Byte opcode, Address pc) const;
+
 	std::unique_ptr<APUBus> bus;
 
 	Byte cpu_to_spc_ports[4] {};

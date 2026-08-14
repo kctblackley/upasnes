@@ -1,14 +1,52 @@
 #pragma once
 #include "component.hpp"
 #include "common.hpp"
+#include <deque>
 
 #define MDMAEN_ADDRESS 0x420B
 #define HDMAEN_ADDRESS 0x420C
 
 class Bus;
+class PPU;
+class Ricoh5A22;
+
+struct TransferUnit {
+	std::array<int, 4> pattern {};
+	int size = 0;
+};
+
+constexpr std::array<TransferUnit, 8> transfer_units = {
+	TransferUnit{{0, 0, 0, 0}, 1}, // Mode 0
+	TransferUnit{{0, 1, 0, 0}, 2}, // Mode 1
+	TransferUnit{{0, 0, 0, 0}, 2}, // Mode 2
+	TransferUnit{{0, 0, 1, 1}, 4}, // Mode 3
+	TransferUnit{{0, 1, 2, 3}, 4}, // Mode 4
+	TransferUnit{{0, 1, 0, 1}, 4}, // Mode 5
+	TransferUnit{{0, 0, 0, 0}, 2}, // Mode 6
+	TransferUnit{{0, 0, 1, 1}, 4}  // Mode 7
+};
+
+struct Unit {
+	Address a_bus = 0; // This is the A-Bus address of the starting unit value, DMA reads the entirety of the unit
+	uint8_t b_bus = 0; // Whatever bbad is for the HDMA channel
+	bool transfer_this = false; // Should that unit be transferred?
+	int unit_type = 0; // Used to know the actual unit type (on the DMA controller side)
+	int cycle_penalty = 0; // DMA controller calculates this cycle penalty value (either zero or non-zero based on descriptor loading)
+	Byte ntrl_after = 0; // CPU-visible NLTR (0x43xA) value once this scanline's line has been consumed
+};
+
+constexpr Unit default_unit = Unit{0, 0, false, 0, 0, 0};
 
 class DMAChannel {
 public:
+	bool is_forbidden_a_bus_address(SNESAddress addr) {
+		if ((addr.bank >= 0x00 && addr.bank <= 0x3F) || (addr.bank >= 0x80 && addr.bank <= 0xBF)) {
+			return (addr.offset >= 0x2100 && addr.offset <= 0x21FF) ||
+			       (addr.offset >= 0x4000 && addr.offset <= 0x421F) ||
+			       (addr.offset >= 0x4300 && addr.offset <= 0x437F);
+		}
+		return false;
+	}
 
 	Byte read(int register_number) {
 		switch (register_number) {
@@ -50,7 +88,7 @@ public:
 		a_bus_address_step = (value >> 3) & 3;
 		transfer_unit_select = value & 7;
 
-		dmap = value & ~0x20;
+		dmap = value;
 	}
 
 	void set_bbad(Byte value) {
@@ -100,16 +138,30 @@ public:
 	void set_ntrl(Byte value) {
 		repeat = (value & 0x80) != 0;
 		lines_to_transfer = value & 0x7F;
+		if (lines_to_transfer == 0) {
+			lines_to_transfer = 128;
+		}
 		ntrl = value;
+	}
+
+	bool is_indirect() {
+		return addressing_mode;
 	}
 
 	void enable_gpdma()  { doing_gpdma = true;  }
 	void disable_gpdma() { doing_gpdma = false; }
-	void enable_hdma()   { doing_hdma = true;   }
-	void disable_hdma()  { doing_hdma = false;  }
+
+	void enable_hdma()   { hdma_reg_enabled = true;   }
+	void disable_hdma()  { hdma_reg_enabled = false;  }
+
+	void terminate_hdma()          { hdma_terminated = true;  }
+	void reset_hdma_termination()  { hdma_terminated = false; }
 
 	bool gpdma_enabled() const { return doing_gpdma; }
-	bool hdma_enabled()  const { return doing_hdma;  }
+
+	bool hdma_enabled() const { return hdma_reg_enabled && !hdma_terminated; }
+
+	bool register_enabled_for_hdma() const { return hdma_reg_enabled; }
 
 	// a1b stays put
 	void increment_a_bus() {
@@ -119,6 +171,35 @@ public:
 	void decrement_a_bus() {
 		a1_address--;
 	}
+
+	void set_table_address(Word value) {
+		table_address = value;
+		a2al = get_lo(value);
+		a2ah = get_hi(value);
+	}
+
+	void reload_table_address() {
+		set_table_address(a1_address);
+	}
+
+	void increment_table_address() {
+		set_table_address(table_address + 1);
+	}
+
+	void increment_a_bus_address(Address& addr) {
+		uint8_t bank = (addr >> 16) & 0xFF;
+		uint16_t address = addr & 0xFFFF;
+		address++;
+		addr = (bank << 16) | address;
+	}
+
+	void decrement_a_bus_address(Address& addr) {
+		uint8_t bank = (addr >> 16) & 0xFF;
+		uint16_t address = addr & 0xFFFF;
+		address--;
+		addr = (bank << 16) | address;
+	}
+
 
 	Address get_a_bus() {
 		return (a1_bank << 16) | a1_address;
@@ -151,22 +232,57 @@ public:
 		dash = (byte_counter >> 8) & 0xFF;
 	}
 
+	bool load_descriptor();
+	Unit do_transfer();
+
+	void push_unit(Address a_bus, uint8_t b_bus, bool transfer_this, int unit_type, int cycle_penalty, Byte ntrl_after) {
+		hdma_units.push_back(Unit{a_bus, b_bus, transfer_this, unit_type, cycle_penalty, ntrl_after});
+	}
+
+	Unit pop_unit() {
+		if (hdma_units.empty()) {
+			return default_unit;
+		}
+
+		Unit unit = hdma_units.front();
+		hdma_units.pop_front();
+		return unit;
+	}
+
+	void reset_hdma_queue() {
+		hdma_units.clear();
+	}
+
+	void connect_bus(Bus* bus) {
+		this->bus = bus;
+	}
+
+	Byte read_a_bus();
+
+	bool new_indirect_address = false;
+	Word prev_indirect_address = 0x00;
+
+	CycleCount reload_penalty = 0;
+
 private:
 
-	// all are R/W
-	Byte dmap = 0; // transfer direction, addressing mode, a-bus address step, transfer unit select (GPDMA and HDMA)
-	Byte bbad = 0; // b-bus address, mapped to 0x2100 and 0x21FF -> 0x2100h + BBAD
-	Byte a1tl = 0; // HDMA table start address (low) or DMA current address (low)
-	Byte a1th = 0; // same, but high
-	Byte a1b  = 0; // gives bank
+	Bus* bus = nullptr;
 
-	bool transfer_direction = false; // 0 = A:CPU to B:I/O, 1=B:I/O to A:CPU
-	bool addressing_mode = false; // 0 = direct table, 1 = indirect table (HDMA only)
-	Byte a_bus_address_step = 0; // 0 = increment, 2 = decrement, 1/3 = fixed
-	Byte transfer_unit_select = 0; // from the pattern table
+	std::deque<Unit> hdma_units {};
 
-	Byte  a1_bank = 0;
-	Word  a1_address = 0;
+	ZByte dmap = 0xFF; // transfer direction, addressing mode, a-bus address step, transfer unit select (GPDMA and HDMA)
+	Byte bbad = 0xFF; // b-bus address, mapped to 0x2100 and 0x21FF -> 0x2100h + BBAD
+	Byte a1tl = 0xFF; // HDMA table start address (low) or DMA current address (low)
+	Byte a1th = 0xFF; // same, but high
+	Byte a1b  = 0xFF; // gives bank
+
+	bool transfer_direction = true; // 0 = A:CPU to B:I/O, 1=B:I/O to A:CPU (derived from dmap=0xFF)
+	bool addressing_mode = true; // 0 = direct table, 1 = indirect table (HDMA only) (derived from dmap=0xFF)
+	Byte a_bus_address_step = 3; // 0 = increment, 2 = decrement, 1/3 = fixed (derived from dmap=0xFF)
+	Byte transfer_unit_select = 7; // from the pattern table (derived from dmap=0xFF)
+
+	Byte  a1_bank = 0xFF;
+	Word  a1_address = 0xFFFF;
 	Byte& hdma_table_bank   = a1_bank;
 	Word& hdma_table_reload = a1_address;
 
@@ -176,42 +292,44 @@ private:
 	// In HDMA: table bank is the bank number for a2al and a2ah, effectively acting as a2b as well as a1b
 	// In HDMA: table address is a constant and acts as the reload value for a2al and a2ah
 
-	Byte dasl = 0; // indirect HDMA address or DMA byte counter (low)
-	Byte dash = 0; // same as above, but high
-	Byte dasb = 0; // indirect HDMA Address bank
+	Byte dasl = 0xFF; // indirect HDMA address or DMA byte counter (low)
+	Byte dash = 0xFF; // same as above, but high
+	Byte dasb = 0xFF; // indirect HDMA Address bank
 
 	uint32_t byte_counter = 0; // not set in registers, set when GPDMA begins
-	Byte indirect_bank = 0;
-	Word indirect_address = 0;
+	Byte indirect_bank = 0xFF;
+	Word indirect_address = 0xFFFF;
 
 	// In GPDMA: do not use 23-16, 15-0 acts as a byte counter (NOT unit-counter, just a BYTE counter) -> 0 means 10000h
 	// In direct HDMA: 23-0 is not used (data is read directly from table)
 	// In indirect HDMA: 23-16 is set by software (current CPU-Bus data address bank), and 16-0 is the current CPU-Bus data address automatically loaded from the table
 
-	Byte a2al = 0; // HDMA table current address (low)
-	Byte a2ah = 0; // HDMA table current address (high)
+	Byte a2al = 0xFF; // HDMA table current address (low)
+	Byte a2ah = 0xFF; // HDMA table current address (high)
 
-	Word table_address = 0;
+	Word table_address = 0xFFFF;
 
 	// In GPDMA: not used/
 	// In HDMA: the current table address bank is taken from a1b, and 15-0 is the current table address that is reloaded from a1tl and a1th
 
-	Byte ntrl = 0; // HDMA line-counter from the current table entry
+	Byte ntrl = 0xFF; // HDMA line-counter from the current table entry
 	
-	bool repeat = 0;
-	Byte lines_to_transfer = 0;
+	bool repeat = true; // derived from ntrl=0xFF
+	Byte lines_to_transfer = 128; // derived from ntrl=0xFF (0x7F count wraps to 128)
 
 	// In GPDMA: not used
 	// In HDMA: 7 is the repeat flag (loaded from table), 6-0 number of lines to be transferred (decremented per scanline)
 
-	Byte unused = 0; // an unused byte corresponding to 43xB, but can be used as a fast RAM location
+	Byte unused = 0xFF; // an unused byte corresponding to 43xB, but can be used as a fast RAM location
 
 	// Below are handled in DMA class itself
 	// 43xC to 43xE are open bus
 	// 43xF is a mirror to 43xB
 
 	bool doing_gpdma = false;
-	bool doing_hdma  = false;
+
+	bool hdma_reg_enabled = false; // mirrors HDMAEN bit; persists across frames
+	bool hdma_terminated  = false; // this frame's table hit 0x00; reset every hdma_init()
 };
 
 enum class GPDMAState {
@@ -241,6 +359,15 @@ struct HDMA {
 
 class DMA : public Component {
 public:
+	bool is_forbidden_a_bus_address(SNESAddress addr) {
+		if ((addr.bank >= 0x00 && addr.bank <= 0x3F) || (addr.bank >= 0x80 && addr.bank <= 0xBF)) {
+			return (addr.offset >= 0x2100 && addr.offset <= 0x21FF) ||
+			       (addr.offset >= 0x4000 && addr.offset <= 0x421F) ||
+			       (addr.offset >= 0x4300 && addr.offset <= 0x437F);
+		}
+		return false;
+	}
+
 	DMA() {
 
 		int channel_number = 0;
@@ -251,7 +378,11 @@ public:
 
 	}
 
-	void tick_hdma();
+	// HDMA occurs atomically
+	void hdma_init();
+	void hdma_transfer();
+
+	// GPDMA is cycle-stepped
 	void tick_gpdma();
 
 	Byte get_open_bus();
@@ -278,11 +409,13 @@ public:
 	void set_mdmaen(Byte value) {
 		int ch = 0;
 
+		mdmaen_value = value;
+
 		if (value) {
-			std::cout << "GPDMA TRIGGERED AT CPU CYCLE " << std::dec << (*cpu_cycle)  << "\n";
+			//std::cout << "GPDMA TRIGGERED AT CPU CYCLE " << std::dec << (*cpu_cycle)  << "\n";
 			gpdma_pending = true;
 		} else {
-			std::cout << "GPDMA TRIGGERED AT CPU CYCLE " << std::dec << (*cpu_cycle)  << "\n";
+			//std::cout << "GPDMA TRIGGERED AT CPU CYCLE " << std::dec << (*cpu_cycle)  << "\n";
 			gpdma_pending = false;
 			gpdma_active  = false;
 		}
@@ -301,6 +434,8 @@ public:
 
 	void set_hdmaen(Byte value) {
 		int ch = 0;
+
+		hdmaen_value = value;
 
 		if (value) {
 			hdma_enabled = true;
@@ -342,7 +477,11 @@ public:
 	Byte communication_read(SNESAddress address) {
 		Byte fetched = get_open_bus();
 
-		if (address.offset >= 0x4300 && address.offset <= 0x437F) {
+		if (address.offset == MDMAEN_ADDRESS) {
+			fetched = mdmaen_value;
+		} else if (address.offset == HDMAEN_ADDRESS) {
+			fetched = hdmaen_value;
+		} else if (address.offset >= 0x4300 && address.offset <= 0x437F) {
 			int channel_number  = get_channel_number(address);
 			int register_number = get_register_number(address);
 			if (register_number >= 0 && channel_number >= 0) {
@@ -387,20 +526,11 @@ public:
 	}
 
 	void gpdma_init() {
-		std::cout << "GPDMA INIT AT CPU CYCLE " << std::dec << (*cpu_cycle)  << "\n";
+		//std::cout << "GPDMA INIT AT CPU CYCLE " << std::dec << (*cpu_cycle)  << "\n";
 		gpdma_pending = false;
 		gpdma_active = true;
 		gpdma.state = GPDMAState::GPDMAInit;
 		log_gpdma();
-	}
-
-	void log_hdma() {
-		return;
-	}
-
-	void hdma_init() {
-		std::cout << "HDMA INIT AT CPU CYCLE " << std::dec << (*cpu_cycle) << "\n";
-		log_hdma();
 	}
 
 	// More steps for HDMA to actually occur
@@ -413,6 +543,9 @@ public:
 
 	void connect_bus(Bus* bus) {
 		this->bus = bus;
+		for (auto& ch : channels) {
+			ch.connect_bus(bus);
+		}
 	}
 
 	// Unimplemented to allow this to be a Component*
@@ -427,15 +560,6 @@ public:
 
 	void connect_cpu_cycle_counter(CycleCount* cpu_cycle) {
 		this->cpu_cycle = cpu_cycle;
-	}
-
-	bool is_forbidden_a_bus_address(SNESAddress addr) {
-		if ((addr.bank >= 0x00 && addr.bank <= 0x3F) || (addr.bank >= 0x80 && addr.bank <= 0xBF)) {
-			return (addr.offset >= 0x2100 && addr.offset <= 0x21FF) ||
-			       (addr.offset >= 0x4000 && addr.offset <= 0x421F) ||
-			       (addr.offset >= 0x4300 && addr.offset <= 0x437F);
-		}
-		return false;
 	}
 
 	uint8_t get_b_bus(Byte bbad, Byte transfer_unit_select, uint32_t byte_tick);
@@ -455,6 +579,14 @@ public:
 			return;
 		}
 		return dma_write(addr, value);
+	}
+
+	Byte read_from_a_bus(Address addr) {
+		SNESAddress address = to_snes_address(addr);
+		if (is_forbidden_a_bus_address(address)) {
+			return get_open_bus();
+		}
+		return dma_read(address);
 	}
 
 	Byte b_bus_read(uint8_t b_bus) {
@@ -483,10 +615,23 @@ public:
 		a_bus_write(address, value);
 	}
 
+	void connect_ppu(PPU* ppu) {
+		this->ppu = ppu;
+	}
+
+	void give_dma_access_to_cpu(Ricoh5A22* cpu) {
+		this->cpu = cpu;
+	}
+
 private:
 	CycleCount* cpu_cycle = nullptr;
 	DMAChannel channels[8] {};
 	Bus* bus = nullptr;
+	PPU* ppu = nullptr;
+	Ricoh5A22* cpu = nullptr;
+
+	Byte mdmaen_value = 0; // raw last-written value, for readback of $420B
+	Byte hdmaen_value = 0; // raw last-written value, for readback of $420C
 
 	GPDMA gpdma;
 	HDMA hdma;
