@@ -571,18 +571,6 @@ bool PPU::should_resolve(bool is_window, int value) {
 	return resolve;
 }
 
-bool PPU::should_force_black(bool is_window, int value) {
-	// Used by main screen and has swapped values for case 1 and 2 compared to should_resolve
-	bool resolve = false;
-	switch (value) {
-	case 0: resolve = false; break;
-	case 1: resolve = is_window; break;
-	case 2: resolve = !is_window; break;
-	case 3: resolve = true; break;
-	}
-	return resolve;
-}
-
 bool PPU::is_colour_math_window(int x) {
 	bool window1_mask = (x >= window1.left_position) && (x <= window1.right_position);
 	bool window2_mask = (x >= window2.left_position) && (x <= window2.right_position);
@@ -605,7 +593,7 @@ bool PPU::is_colour_math_window(int x) {
 }
 
 bool PPU::resolve_main_screen_px(Pixel& px, bool is_window) {
-	bool resolve = should_force_black(is_window, col.main_screen_black_region);
+	bool resolve = should_resolve(is_window, col.main_screen_black_region);
 	if (resolve) {
 		px.colour = 0;
 		px.transparent = false;

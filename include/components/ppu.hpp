@@ -116,7 +116,6 @@ public:
 	}
 
 	bool should_resolve(bool is_window, int value);
-	bool should_force_black(bool is_window, int value);
 	bool is_colour_math_window(int x);
 	bool resolve_main_screen_px(Pixel& px, bool is_window);
 	void resolve_sub_screen_px(Pixel& px, bool is_window);
