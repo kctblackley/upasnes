@@ -7,6 +7,8 @@
 #include <iomanip>
 #include <cstdint>
 
+#include "logging_options.hpp"
+
 namespace {
 
 	std::string byte_hex(Byte b) {
@@ -208,10 +210,6 @@ void SPC700::add_cycles(CycleCount cycles) {
 	this->cycle += cycles;
 }
 
-CycleCount SPC700::get_cycle() {
-	return this->cycle;
-}
-
 TickCount SPC700::get_tick() {
 	return this->tick;
 }
@@ -229,19 +227,6 @@ void SPC700::run_half_cycle() {
 	op.function(*this, op.skipped);
 }
 
-void SPC700::accumulate(CycleCount delta) {
-	accumulated_cycles += delta;
-	while (accumulated_cycles > SPC_700_CYCLE_CONSTANT) {
-		if constexpr (SHOW_LOGS) {
-			if (instruction_cycle == 0 && BufferOpCode < 256) {
-				log_instruction();
-			}
-		}
-		tick_component();
-		accumulated_cycles -= SPC_700_CYCLE_CONSTANT;
-	}
-}
-
 void SPC700::accumulate_dsp(CycleCount delta) {
 	dsp_accumulated_cycles += delta;
 	while (dsp_accumulated_cycles > SDSP_CYCLE_CONSTANT) {
@@ -251,13 +236,41 @@ void SPC700::accumulate_dsp(CycleCount delta) {
 	}
 }
 
+void SPC700::log_spc() {
+	if constexpr (SHOW_LOGS) {
+		if (instruction_cycle == 0 && BufferOpCode < 256) {
+			log_instruction();
+		}
+	}
+}
+
 void SPC700::tick_component() { // when the component is ticked, it does a half tick in actuality
-	tick_timer(0, 128);
-	tick_timer(1, 128);
-	tick_timer(2, 16);
-	tick++;
-	run_half_cycle();
-	run_half_cycle();
+	if (first_tick) {
+		log_spc();
+		first_tick = false;
+	}
+	if constexpr (HALF_CYCLES) {
+		if (tick & 1) {
+			tick_timer(0, 128);
+			tick_timer(1, 128);
+			tick_timer(2, 16);
+		}
+		tick++;
+		run_half_cycle();
+		master_cycle += SPC_700_CYCLE_CONSTANT / 2.00f;
+	} else {
+		tick_timer(0, 128);
+		tick_timer(1, 128);
+		tick_timer(2, 16);
+		tick++;
+		run_half_cycle();
+		run_half_cycle();
+		master_cycle += SPC_700_CYCLE_CONSTANT;
+	}
+}
+
+CycleCount SPC700::get_cycle() {
+	return static_cast<CycleCount>(master_cycle);
 }
 
 void SPC700::reset() { // RUN IPL ROM HERE! MEMORY MAP THE IPL ROM!
@@ -267,17 +280,24 @@ void SPC700::reset() { // RUN IPL ROM HERE! MEMORY MAP THE IPL ROM!
 	regs.S = 0xEF;
 	regs.P = 0x00;
 	regs.PC = 0xFFC0;
-	accumulated_cycles = 0;
+	master_cycle = 0;
 
 	for (SPCTimer& timer : timers) {
 		timer = SPCTimer{};
 	}
+
 	ipl_rom_enabled = true;
 
 	BufferOpCode = read(regs.PC);
 	write(0xF0, 0x0A);
 	spc_to_cpu_ports[0] = 0xAA;
 	spc_to_cpu_ports[1] = 0xBB;
+
+	while (regs.PC != 0xFFC5 || instruction_cycle != 0) {
+		tick_component();
+	}
+
+	master_cycle = 0;
 }
 
 void SPC700::initialise() {

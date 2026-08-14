@@ -7,6 +7,7 @@
 #include "ricoh_5a22_opcode_info.hpp"
 #include "bus.hpp"
 #include "dma.hpp"
+#include "logging_options.hpp"
 
 namespace {
 	std::string byte_hex(Byte b) {
@@ -77,10 +78,7 @@ void Ricoh5A22::tick_multiply_divisor() {
 	}
 }
 
-void Ricoh5A22::run_half_cycle() {
-	if (regs.emulation_mode) { apply_invariants(); }
-	//log();
-	tick_multiply_divisor();
+void Ricoh5A22::log_ricoh() {
 	if constexpr (SHOW_LOGS) {
 		if (instruction_cycle == 0) {
 			executed++;
@@ -142,6 +140,12 @@ void Ricoh5A22::run_half_cycle() {
 			std::cout << '\n';
 		}
 	}
+}
+
+void Ricoh5A22::run_half_cycle() {
+	if (regs.emulation_mode) { apply_invariants(); }
+	//log();
+	tick_multiply_divisor();
 	if (instruction_cycle == 0 && BufferOpCode != 0x100 && BufferOpCode != 0x101) {
 		poll_interrupts();
 	}
@@ -156,15 +160,22 @@ void Ricoh5A22::run_half_cycle() {
 
 void Ricoh5A22::tick_cpu() {
 	tick++;
-	if constexpr (!HALF_CYCLES) {
+	if constexpr (HALF_CYCLES) {
 		run_half_cycle();
+		this->add_cycles(RICOH_5A22_CYCLE / 2.0);
+	} else {
+		run_half_cycle();
+		run_half_cycle();
+		this->add_cycles(RICOH_5A22_CYCLE);
 	}
-	run_half_cycle();
-	this->add_cycles(RICOH_5A22_CYCLE);
 }
 
 void Ricoh5A22::tick_component() { // when the component is ticked, it does a half tick in actuality
 	// HDMA will suspend both of these through use of a cycle-penalty mechanism (HDMA is not cycle-stepped, unlike GPDMA)
+	if (first_tick) {
+		log_ricoh();
+		first_tick = false;
+	}	
 	if (dma->gpdma_active) {
 		dma->tick_gpdma();
 		this->add_cycles(1);

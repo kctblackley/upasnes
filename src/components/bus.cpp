@@ -136,6 +136,13 @@ inline Store* Bus::route(SNESAddress address) {
 	return open_bus.get();
 }
 
+CycleCount Bus::component_penalty(SNESAddress address) {
+	if (address.offset >= CPU_PORTS_SECTION && address.offset < CPU_PORTS_NON_PENALTY_SECTION) {
+		return CPU_PORTS_PENALTY;
+	}
+	return WRAM_PENALTY;
+}
+
 void Bus::write(Address addr, Byte value, bool is_dma) {
 	cpu->set_open_bus(value);
 
@@ -150,6 +157,9 @@ void Bus::write(Address addr, Byte value, bool is_dma) {
 	if (component) {
 		data_bus = value;
 		component->communication_write(address, value);
+		if (!is_dma) {
+			callback(component_penalty(address));
+		}
 		return;
 	}
 
@@ -176,6 +186,9 @@ Byte Bus::read(Address addr, bool is_dma) {
 	if (component) {
 		data_bus = component->communication_read(address);
 		cpu->set_open_bus(data_bus);
+		if (!is_dma) {
+			callback(component_penalty(address));
+		}
 		return data_bus;
 	}
 

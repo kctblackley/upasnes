@@ -30,7 +30,6 @@ public:
 	void add_cycles(CycleCount cycles) override;
 
 	void run_half_cycle();
-	void accumulate(CycleCount delta);
 	void accumulate_dsp(CycleCount delta);
 	void tick_component() override;
 	CycleCount get_cycle() override;
@@ -234,9 +233,15 @@ public:
 		return bus->sdsp_above_half();
 	}
 
+	size_t audio_buffer_size() {
+		return bus->audio_buffer_size();
+	}
+
 	int sdsp_ticks_this_frame = 0;
 
 	void log_instruction();
+
+	void log_spc();
 
 private:
 	Byte trace_read(Address addr) const;
@@ -251,7 +256,7 @@ private:
 	CycleCount instruction_cycle; 
 	TickCount tick;
 
-	double accumulated_cycles = 0;
+	double master_cycle = 0;
 
 	bool ipl_rom_enabled = true;
 
@@ -259,6 +264,8 @@ private:
 	SPCTimer timers[3];
 
 	int delay_cycles = 0;
+
+	bool first_tick = true;
 
 	double dsp_accumulated_cycles = 0;
 };

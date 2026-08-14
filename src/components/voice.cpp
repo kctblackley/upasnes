@@ -120,12 +120,12 @@ StereoSample Voice::output() {
 
 void Voice::advance_brr_address() {
 	if (end_flag) {
+		endx_flag = true;
 		if (loop_flag) {
 			current_brr_address = loop_brr_address;
 		} else {
 			envelope = 0;
 			active = false;
-			endx_flag = true;
 		}
 	} else {
 		current_brr_address = next_brr_address;

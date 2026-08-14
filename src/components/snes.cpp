@@ -4,6 +4,8 @@
 #include <iostream>
 #include <algorithm>
 
+constexpr bool NO_THROTTLING = false;
+
 SNES::SNES() : master_cycle(0) {
 	// Create component and link to Bus
 
@@ -11,13 +13,11 @@ SNES::SNES() : master_cycle(0) {
 	
 	devices.push_back(std::make_unique<Ricoh5A22>(bus.get()));
 	devices.push_back(std::make_unique<PPU>(bus.get()));
-	
-	// Do not push SPC700 as the SNES does not tick that itself (separate component)
+	devices.push_back(std::make_unique<SPC700>());
 	
 	ricoh_5a22 = static_cast<Ricoh5A22*>(devices[0].get());
 	ppu = static_cast<PPU*>(devices[1].get());
-
-	spc_700 = std::make_unique<SPC700>();
+	spc_700 = static_cast<SPC700*>(devices[2].get());
 
 	renderer = std::make_unique<Renderer>();
 
@@ -26,7 +26,7 @@ SNES::SNES() : master_cycle(0) {
 	ppu->connect_cpu(ricoh_5a22);
 
 	bus->connect_cpu(ricoh_5a22);
-	bus->connect_apu(spc_700.get());
+	bus->connect_apu(spc_700);
 	bus->connect_ppu(ppu);
 
 	ppu->connect_bus(bus.get());
@@ -45,17 +45,27 @@ void SNES::load_cartridge(const std::string& directory) {
 }
 
 void SNES::tick_snes() {
-	if (ricoh_5a22->get_cycle() <= ppu->get_cycle()) {
+	CycleCount cpu_cycle = ricoh_5a22->get_cycle();
+	CycleCount spc_cycle = spc_700->get_cycle();
+	CycleCount ppu_cycle = ppu->get_cycle();
+
+	if (spc_cycle <= cpu_cycle && spc_cycle <= ppu_cycle) {
+		spc_700->tick_component();
+	} else if (cpu_cycle <= ppu_cycle) {
 		ricoh_5a22->tick_component();
 	} else {
 		ppu->tick_component();
 	}
-	master_cycle = std::min(ricoh_5a22->get_cycle(), ppu->get_cycle());
+
+	master_cycle = std::min({ ricoh_5a22->get_cycle(), spc_700->get_cycle(), ppu->get_cycle() });
 }
 
 void SNES::poll() {
 	if (ricoh_5a22->get_cycle() == master_cycle) {
 		ricoh_5a22->tick_component();
+	}
+	if (spc_700->get_cycle() == master_cycle) {
+		spc_700->tick_component();
 	}
 }
 
@@ -72,8 +82,7 @@ void SNES::run() {
 	int fps_frames = 0;	
 	int frame_count = 0;
 
-	constexpr double TARGET_FRAME_SECONDS = 1.0 / 60.0988; // NTSC SNES refresh rate
-	auto frame_start = std::chrono::steady_clock::now();
+	// If unthrottled, this can reach 140+ frames per second
 
 	CycleCount prev_cpu_cycle = ricoh_5a22->get_cycle();
 
@@ -84,7 +93,6 @@ void SNES::run() {
 		CycleCount new_cpu_cycle = ricoh_5a22->get_cycle();
 		CycleCount delta = new_cpu_cycle - prev_cpu_cycle;
 		prev_cpu_cycle = new_cpu_cycle;
-		spc_700->accumulate(delta);
 		spc_700->accumulate_dsp(delta);
 
 		if (ppu->frame_finished) {
@@ -103,9 +111,11 @@ void SNES::run() {
 			fps_frames++;
 			frame_count++;
 
-			auto target = frame_start + std::chrono::duration<double>(TARGET_FRAME_SECONDS);
-			std::this_thread::sleep_until(target);
-			frame_start = std::chrono::steady_clock::now();
+			if constexpr (!DEBUG_WINDOW && !NO_THROTTLING) {
+				while (spc_700->audio_buffer_size() > TARGET_AUDIO_BUFFER) {
+					std::this_thread::sleep_for(std::chrono::milliseconds(1));
+				}
+			}
 		}
 
 		total_ticks += 1;
@@ -130,12 +140,10 @@ void SNES::reset() {
 	for (const auto& d : devices) {
 		d->reset();
 	}
-	spc_700->reset();
 }
 
 void SNES::initialise() {
 	for (const auto& d : devices) {
 		d->initialise();
 	}
-	spc_700->initialise();
 }

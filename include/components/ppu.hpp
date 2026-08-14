@@ -1127,7 +1127,7 @@ private:
 	bool time_over = false;
 	bool range_over = false;
 	bool master_slave_mode = false;
-	Byte ppu1_version = 1; // 5C77 only ever reports version 1 on real hardware
+	Byte ppu1_version = 1;
 	Byte ppu2_version = 3;
 	Byte region = 0;
 

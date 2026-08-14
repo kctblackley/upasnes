@@ -343,6 +343,8 @@ public:
 
 	void log();
 
+	void log_ricoh();
+
 	CycleCount cycle;
 
 private:
@@ -367,6 +369,7 @@ private:
 	bool nmi_enabled = false;
 	bool auto_read_enabled = false;
 	bool fastrom_enabled = false;
+	bool first_tick = true;
 
 	// For disassembler
 	bool was_interrupt = false;

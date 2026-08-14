@@ -32,6 +32,8 @@ public:
 	Component* system_area_component(SNESAddress address);
 	Component* route_to_component(SNESAddress address);
 
+	CycleCount component_penalty(SNESAddress address);
+
 	void write(Address addr, Byte value, bool is_dma = false);
 	Byte read(Address addr, bool is_dma = false);
 

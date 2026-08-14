@@ -3,11 +3,6 @@
 #include <cstdint>
 #include <string>
 
-// SPC700 opcode metadata.
-//
-// The SPC700 uses fixed-size instructions (1, 2, or 3 bytes).
-// Unlike the Ricoh 5A22 table, there is no M/X-dependent sizing.
-
 struct SPC700OpCodeInfo
 {
     const char* mnemonic;

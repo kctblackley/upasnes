@@ -14,9 +14,9 @@ public:
 
 	SNES();
 
-	void load_cartridge(const std::string& directory); // This ROM is routed through the bus and into the cartridge store
-	void poll(); // Poll finds components that are due to be ticked for the current master cycle
-	void tick_snes(); // Polls components, ticks components if there are any, then increments master cycle by 1
+	void load_cartridge(const std::string& directory);
+	void poll(); 
+	void tick_snes();
 	void run();
 
 	void reset();
@@ -25,13 +25,13 @@ public:
 private:
 
 	std::unique_ptr<Bus> bus;
-	std::unique_ptr<SPC700> spc_700;
 	std::unique_ptr<Renderer> renderer;
 
 	std::vector<std::unique_ptr<Component>> devices;
 
 	Ricoh5A22* ricoh_5a22 = nullptr;
 	PPU* ppu = nullptr;
+	SPC700* spc_700 = nullptr;
 
 	CycleCount master_cycle;
 };

@@ -32,6 +32,10 @@ public:
 		return sdsp.above_half_capacity();
 	}
 
+	size_t audio_buffer_size() {
+		return sdsp.audio_buffer_size();
+	}
+
 	void close_audio() {
 		sdsp.close_audio();
 	}

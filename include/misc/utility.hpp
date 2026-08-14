@@ -10,7 +10,5 @@
 
 using Byte = uint8_t;
 
-// For actual ROM files
+// For actual ROM files (this is a useless comment why did I write this?)
 std::vector<Byte> load_rom(const std::string& filename);
-
-// For text, e.g. of raw text 3e 4f 5a etc.

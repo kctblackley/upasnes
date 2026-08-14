@@ -123,6 +123,8 @@ public:
 		decode_brr_block();
 		sample_index = 0;
 
+		endx_flag = false;
+
 		return;
 	}
 
@@ -427,6 +429,10 @@ public:
 
 	bool above_half_capacity() {
 		return audio_buffer.above_half_capacity();
+	}
+
+	size_t audio_buffer_size() {
+		return audio_buffer.samples_available();
 	}
 
 	StereoSample output();

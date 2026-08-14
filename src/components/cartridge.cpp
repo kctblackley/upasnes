@@ -2,9 +2,6 @@
 #include <iomanip>
 #include <sstream>
 
-// Just defines some cartridge helper functions
-// Used to detect the mapping mode for the cartridge (inspired by bsnes)
-
 constexpr bool FORCE_LOROM = false;
 constexpr bool FORCE_HIROM = false;
 

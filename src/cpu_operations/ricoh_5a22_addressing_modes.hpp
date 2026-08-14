@@ -4,7 +4,7 @@
 #define INSTRUCTION_END_CHECK_ROUTINE ; 
 #define PREDICATE_CHECK_ROUTINE ;
 
-#define NEXT_OPCODE MakeHandler(Ricoh5A22Functions::Read<ReadFrom::PCPB, ReadTo::OpCode>) 
+#define NEXT_OPCODE MakeHandler(Ricoh5A22Functions::Next) 
 
 
 #define NATIVE_IMMEDIATE_NO_M \

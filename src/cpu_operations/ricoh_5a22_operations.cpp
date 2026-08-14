@@ -567,6 +567,17 @@ namespace Ricoh5A22Functions {
 		
 	}
 
+	static void Next(Ricoh5A22& cpu, bool skipped) {
+	    Word register_offset = cpu.regs.PC;
+	    Byte register_bank = cpu.regs.PB;
+
+	    Byte value_read = cpu.read(get_pcpb(register_offset, register_bank));
+
+	    cpu.BufferOpCode = value_read;
+
+	    cpu.log_ricoh();
+	}
+
 	template <typename From, typename To, typename Mode = CopyMode::All, bool PCIncrement = false>
 	static void Copy(Ricoh5A22& cpu, bool skipped) {
 		

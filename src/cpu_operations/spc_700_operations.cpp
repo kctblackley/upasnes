@@ -2,7 +2,8 @@
 #include "spc_700_addressing_modes.hpp"
 #include "spc_700.hpp"
 
-// TO-DO WHEN COMPLETED, ORDER ALL Instruction<SPC700>S BY OPCODE
+// TO-DO WHEN COMPLETED, ORDER ALL Instruction<SPC700> BY OPCODE
+// The above was to never be done
 
 namespace SPC700Predicates {
 	static bool NoJump(SPC700& cpu) {
@@ -102,6 +103,7 @@ namespace SPC700Functions {
 
 	static void Next(SPC700& cpu, bool skipped) {
 		cpu.BufferOpCode = cpu.read(cpu.regs.PC);
+		cpu.log_spc();
 	}
 
 	static void CLRC(SPC700& cpu, bool skipped) { cpu.regs.P = (cpu.regs.P & ~0x01); }
