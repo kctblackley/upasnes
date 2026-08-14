@@ -270,7 +270,7 @@ private:
 
 	std::deque<Unit> hdma_units {};
 
-	ZByte dmap = 0xFF; // transfer direction, addressing mode, a-bus address step, transfer unit select (GPDMA and HDMA)
+	Byte dmap = 0xFF; // transfer direction, addressing mode, a-bus address step, transfer unit select (GPDMA and HDMA)
 	Byte bbad = 0xFF; // b-bus address, mapped to 0x2100 and 0x21FF -> 0x2100h + BBAD
 	Byte a1tl = 0xFF; // HDMA table start address (low) or DMA current address (low)
 	Byte a1th = 0xFF; // same, but high
