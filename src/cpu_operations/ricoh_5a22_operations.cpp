@@ -344,7 +344,7 @@ namespace Ricoh5A22Functions {
 			register_bank = 0;
 		}
 		if constexpr (std::is_same_v<From, ReadFrom::PointerPlusOne>) {
-			register_offset = (cpu.BufferPointer & 0xFF00) | ((cpu.BufferPointer + 1) & 0x00FF);
+			register_offset = cpu.BufferPointer + 1;
 			register_bank = 0;
 		}
 		if constexpr (std::is_same_v<From, ReadFrom::Vector>) {
@@ -5323,7 +5323,7 @@ Instruction<Ricoh5A22> n_9e = {
 	MakeHandler(Ricoh5A22Functions::Read<ReadFrom::PCPB, ReadTo::Pointer>),
 	MakeHandler(Ricoh5A22Functions::IncrementPC),
 	MakeHandler(Ricoh5A22Functions::Read<ReadFrom::PCPB, ReadTo::PointerHigh>),
-	MakeHandler(Ricoh5A22Functions::AbsoluteLongXIndex<Mode::PCIncrement>),
+	MakeHandler(Ricoh5A22Functions::AbsoluteXIndex<Mode::PCIncrement>),
 	MakeHandler(Ricoh5A22Functions::NOP),
 	MakeHandler(Ricoh5A22Functions::IncrementPC<SetMode::OZ, false, BranchMode::None, true>),
 	MakeHandler(Ricoh5A22Functions::Write<WriteValue::OperandLow, WriteTo::PointerBank>),
@@ -5337,7 +5337,7 @@ Instruction<Ricoh5A22> e_9e = {
 	MakeHandler(Ricoh5A22Functions::Read<ReadFrom::PCPB, ReadTo::Pointer>),
 	MakeHandler(Ricoh5A22Functions::IncrementPC),
 	MakeHandler(Ricoh5A22Functions::Read<ReadFrom::PCPB, ReadTo::PointerHigh>),
-	MakeHandler(Ricoh5A22Functions::AbsoluteLongXIndex<Mode::PCIncrement>),
+	MakeHandler(Ricoh5A22Functions::AbsoluteXIndex<Mode::PCIncrement>),
 	MakeHandler(Ricoh5A22Functions::NOP),
 	MakeHandler(Ricoh5A22Functions::IncrementPC<SetMode::OZ, false, BranchMode::None, true>),
 	MakeHandler(Ricoh5A22Functions::Write<WriteValue::OperandLow, WriteTo::PointerBank>),
@@ -5897,7 +5897,7 @@ Instruction<Ricoh5A22> n_cb = {
 	MakeHandler(Ricoh5A22Functions::NOP),
 	MakeHandler(Ricoh5A22Functions::NOP),
 	MakeHandler(Ricoh5A22Functions::NOP),
-	MakeHandler(Ricoh5A22SpecialFunctions::WAIT),
+	MakeHandler(Ricoh5A22SpecialFunctions::WAIT)
 };
 Instruction<Ricoh5A22> e_cb = n_cb;
 

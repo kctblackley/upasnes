@@ -11,6 +11,7 @@ constexpr bool LOG_PPU_REGISTER_WRITES = false;
 constexpr bool LOG_OAM = false;
 constexpr bool LOG_CGRAM = false;
 constexpr bool LOG_VRAM = false;
+constexpr bool TESTING = false;
 constexpr size_t TARGET_AUDIO_BUFFER = 4096;
 
 // JUST FOR ME! :)

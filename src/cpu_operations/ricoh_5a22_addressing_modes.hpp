@@ -343,7 +343,7 @@
 	/* 3.1 */ MakeHandler(Ricoh5A22Functions::IncrementPC<SetMode::AOD, Mode::IfSkipped>), \
 	/* 3.2 */ MakeHandler(Ricoh5A22Functions::Read<ReadFrom::Address, ReadTo::Pointer>), \
 	/* 4.1 */ MakeHandler(Ricoh5A22Functions::NOP), \
-	/* 4.2 */ MakeHandler(Ricoh5A22Functions::Read<ReadFrom::AddressPlusOneWrap16, ReadTo::PointerHigh>), \
+	/* 4.2 */ MakeHandler(Ricoh5A22Functions::Read<ReadFrom::Address, ReadTo::Pointer, Mode::PlusOne>), \
 	/* 6.1 */ MakeHandler(Ricoh5A22Functions::Copy<ReadFrom::RegisterA, ReadTo::Operand>), \
 	/* 6.2 */ MakeHandler(Ricoh5A22Functions::Write<WriteValue::OperandLow, WriteTo::PointerDB>), \
 	/* 7.1 */ MakeHandler(Ricoh5A22Functions::NOP, Ricoh5A22Predicates::MFlagSet), \

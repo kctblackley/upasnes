@@ -203,7 +203,9 @@ SPC700::SPC700() : cycle(0), instruction_cycle(0) {
 	std::cout << "Loaded SPC700 IPL ROM\n";
 
 	bus = std::make_unique<APUBus>();
-	initialise();
+	if constexpr (!TESTING) {
+		initialise();
+	}
 }
 
 void SPC700::add_cycles(CycleCount cycles) {

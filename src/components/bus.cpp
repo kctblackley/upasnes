@@ -144,12 +144,12 @@ CycleCount Bus::component_penalty(SNESAddress address) {
 }
 
 void Bus::write(Address addr, Byte value, bool is_dma) {
-	cpu->set_open_bus(value);
-
 	if (test_mode) {
 		test_memory[addr & 0xFFFFFF] = value;
 		return;
 	}
+
+	cpu->set_open_bus(value);
 
 	SNESAddress address = split_address(addr);
 

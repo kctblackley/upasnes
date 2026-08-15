@@ -70,6 +70,7 @@ public:
 		cycle++;
 		if (addr >= 0xFA && addr <= 0xFC) {
 			timers[addr - 0xFA].target = value;
+			bus->write(addr, value);
 			return;
 		}
 		if (addr == 0xF1) {
@@ -108,11 +109,13 @@ public:
 		    	cpu_to_spc_ports[3] = 0;
 		    }
 
+		    bus->write(addr, value);
 		    return;
 		}
 		if (addr >= 0xF4 && addr <= 0xF7) {
 			spc_to_cpu_ports[addr - 0xF4] = value;
-			return;
+			bus->write(addr, value);
+		   	return;
 		}
 		bus->write(addr, value);
 	}
@@ -210,15 +213,15 @@ public:
 
 
 	void enable_test_mode() override {
-		return;
+		bus->enable_test_mode();
 	}
 
 	void disable_test_mode() override {
-		return;
+		bus->disable_test_mode();
 	}
 
 	void reset_test_memory() override {
-		return;
+		bus->reset_test_memory();
 	}
 
 	Byte test_peek(Address addr) override {
@@ -258,7 +261,7 @@ private:
 
 	double master_cycle = 0;
 
-	bool ipl_rom_enabled = true;
+	bool ipl_rom_enabled = false;
 
 	std::array<Byte, 64> ipl_rom {};
 	SPCTimer timers[3];
