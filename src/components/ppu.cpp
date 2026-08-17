@@ -203,11 +203,11 @@ void PPU::render_oam_view() {
 	}
 }
 
-void PPU::push_pixel(BG& bg, const Pixel& px, int& dot) {
+void PPU::push_pixel(BG& bg, const Pixel& px, int& dot, bool native_hires) {
 	bg.main_scanline[dot] = px;
 	bg.sub_scanline[dot]  = px;
 
-	if (!hires_mode) {
+	if (!native_hires) {
 		bg.main_scanline[dot + 1] = px;
 		bg.sub_scanline [dot + 1]  = px;
 		dot += 2;
@@ -225,10 +225,10 @@ void PPU::render_bg_scanline(BG& bg) {
 	
 	while (dot < 512) {
 
-		uint16_t xcounter = hires_mode ? dot : (dot >> 1);
+		uint16_t xcounter = native_hires ? dot : (dot >> 1);
 		if (bg_mode == 7) {
 			fetched_pixel = fetch_mode7_pixel(bg, xcounter);
-			push_pixel(bg, fetched_pixel, dot);
+			push_pixel(bg, fetched_pixel, dot, native_hires);
 		} else {
 			int bg_x, bg_y;
 			int mosaic_x, mosaic_y;
@@ -391,7 +391,7 @@ void PPU::render_bg_scanline(BG& bg) {
 				px.transparent = (colour == 0);
 				px.colour = snes_colour;
 			
-				push_pixel(bg, px, dot);
+				push_pixel(bg, px, dot, native_hires);
 
 				sub_px++;
 			}

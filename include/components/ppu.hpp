@@ -126,7 +126,7 @@ public:
 	Pixel fetch_bg_pixel(BG& bg, uint16_t screen_x);
 	Pixel fetch_mode7_pixel(BG& bg, uint16_t screen_x);
 	void fetch_objects();
-	void push_pixel(BG& bg, const Pixel& px, int& dot);
+	void push_pixel(BG& bg, const Pixel& px, int& dot, bool native_hires);
 	void render_bg_scanline(BG& bg);
 	void render_obj_scanline(ObjectLayer& obj);
 	void render_scanline();
