@@ -15,8 +15,8 @@ constexpr int HDMA_INIT_DOT = 6;
 constexpr int HDMA_TRANSFER_DOT = 278;
 
 void PPU::window_mask(std::array<Pixel, 512>& scanline, bool window1_enabled, bool window2_enabled, bool window1_inverted, bool window2_inverted, Byte mask_logic, bool colour_math) {
-	int x = 0;
-	for (int dot = 0; dot < 512; dot += 2) {
+	int step = hires_mode ? 1 : 2;
+	for (int dot = 0; dot < 512; dot += step) {
 		bool window1_mask = window1_dots[dot];
 		bool window2_mask = window2_dots[dot];
 		if (window1_inverted) { window1_mask = !window1_mask; }
@@ -36,7 +36,9 @@ void PPU::window_mask(std::array<Pixel, 512>& scanline, bool window1_enabled, bo
 
 		if (mask) {
 			scanline[dot].transparent = true;
-			scanline[dot + 1].transparent = true;
+			if (!hires_mode) {
+				scanline[dot + 1].transparent = true;
+			}
 		}
 	}
 }
@@ -77,7 +79,20 @@ Pixel PPU::fetch_mode7_pixel(BG& bg, uint16_t xcounter) {
 		colour = colour & 0x7F;
 	}
 
-	Word snes_colour = cgram.data[colour];
+	Word snes_colour;
+	if (col.direct_colour_mode && bg.layer == 1) {
+		Byte r3 =  colour       & 0x7;
+		Byte g3 = (colour >> 3) & 0x7;
+		Byte b2 = (colour >> 6) & 0x3;
+
+		Byte r5 = r3 << 2;
+		Byte g5 = g3 << 2;
+		Byte b5 = b2 << 3;
+
+		snes_colour = (b5 << 10) | (g5 << 5) | r5;
+	} else {
+		snes_colour = cgram.data[colour];
+	}
 	Pixel px;
 	px.transparent = (colour == 0);
 	px.colour = snes_colour;
@@ -188,14 +203,15 @@ void PPU::render_oam_view() {
 	}
 }
 
-void PPU::push_pixel(BG& bg, Pixel px, int& dot) {
+void PPU::push_pixel(BG& bg, const Pixel& px, int& dot) {
 	bg.main_scanline[dot] = px;
 	bg.sub_scanline[dot]  = px;
-	dot++;
 
 	if (!hires_mode) {
-		bg.main_scanline[dot] = px;
-		bg.sub_scanline [dot]  = px;
+		bg.main_scanline[dot + 1] = px;
+		bg.sub_scanline [dot + 1]  = px;
+		dot += 2;
+	} else {
 		dot++;
 	}
 }
@@ -203,7 +219,8 @@ void PPU::push_pixel(BG& bg, Pixel px, int& dot) {
 void PPU::render_bg_scanline(BG& bg) {
 	Pixel fetched_pixel;
 
-	int sub_px = bg.bghofs & 7;
+	bool native_hires = (bg_mode == 5 || bg_mode == 6);
+	int sub_px = native_hires ? (bg.bghofs & 15) : (bg.bghofs & 7);
 	int dot = 0;
 	
 	while (dot < 512) {
@@ -227,10 +244,10 @@ void PPU::render_bg_scanline(BG& bg) {
 				bg_y = (vcounter + bg.bgvofs) & 0x3FF;
 			}
 
-			int tile_x = bg_x >> 3;
+			int tile_x = bg_x >> (native_hires ? 4 : 3);
 			int tile_y = bg_y >> 3;
 
-			int pixel_x = bg_x & 7;
+			int pixel_x = bg_x & (native_hires ? 0xF : 7);
 			int pixel_y = bg_y & 7;
 
 			int map_width_tiles  = bg.horizontal_tilemap_count ? 64 : 32;
@@ -264,7 +281,15 @@ void PPU::render_bg_scanline(BG& bg) {
 			int palette  = (entry >> 10) & 0x7;
 			int priority = (entry >> 13) & 0x1;
 
-			if (bg.character_size) {
+			if (native_hires) {
+				if (bg.character_size) {
+					int sub_y = (bg_y >> 3) & 1;
+
+					if (vflip) { sub_y ^= 1; }
+
+					tile_number += sub_y * 16;
+				}
+			} else if (bg.character_size) {
 				int sub_x = (bg_x >> 3) & 1;
 				int sub_y = (bg_y >> 3) & 1;
 
@@ -278,11 +303,6 @@ void PPU::render_bg_scanline(BG& bg) {
 			if (vflip) {
 				pixel_y = pixel_y ^ 7;
 			}
-
-			Word tile_address = (bg.word_address + tile_number * (4 * bg.bpp)) & 0x7FFF;
-
-			DecodedRow* row = get_tile_row(tile_address, pixel_y, bg.bpp);
-			const auto& row_data = row->data;
 
 			int priority_value = 0;
 
@@ -311,7 +331,31 @@ void PPU::render_bg_scanline(BG& bg) {
 			px.layer = bg.layer;
 			px.colour_math = bg.enable_colour_math;
 
-			while (sub_px < 8 && dot < 512) {
+			int character_width = native_hires ? 16 : 8;
+
+			while (sub_px < character_width && dot < 512) {
+
+				int current_tile_number = tile_number;
+
+				if (native_hires) {
+					int character_pixel = hflip ? (15 - sub_px) : sub_px;
+					current_tile_number += character_pixel >> 3;
+				}
+
+				Word tile_address = (bg.word_address + current_tile_number * (4 * bg.bpp)) & 0x7FFF;
+
+				DecodedRow* row = get_tile_row(tile_address, pixel_y, bg.bpp);
+				const auto& row_data = row->data;
+
+				int source_pixel_x;
+
+				if (native_hires) {
+					int character_pixel = hflip ? (15 - sub_px) : sub_px;
+					source_pixel_x = character_pixel & 7;
+				} else {
+					source_pixel_x = hflip ? (7 - sub_px) : sub_px;
+				}
+
 				Byte colour;
 
 				if (bg.mosaic) {
@@ -324,12 +368,26 @@ void PPU::render_bg_scanline(BG& bg) {
 
 					colour = hflip ? row_data[7 - source_pixel_x] : row_data[source_pixel_x];
 				} else {
-					colour = hflip ? row_data[7 - sub_px] : row_data[sub_px];
+					colour = row_data[source_pixel_x];
 				}
 
 				int cgram_index = palette_base + colour;
-				Word snes_colour = cgram.data[cgram_index];
+				Word snes_colour;
+				if (col.direct_colour_mode && bg.bpp == 8) {
+					Byte r3 =  colour       & 0x7;
+					Byte g3 = (colour >> 3) & 0x7;
+					Byte b2 = (colour >> 6) & 0x3;
 
+					Byte r5 = (r3 << 2) | ((palette & 0x1) << 1);
+					Byte g5 = (g3 << 2) | ((palette & 0x2) << 0);
+					Byte b5 = (b2 << 3) | ((palette & 0x4) << 0);
+
+					snes_colour = (b5 << 10) | (g5 << 5) | r5;
+				} else {
+					int cgram_index = palette_base + colour;
+					snes_colour = cgram.data[cgram_index];
+				}
+				
 				px.transparent = (colour == 0);
 				px.colour = snes_colour;
 			
@@ -450,7 +508,7 @@ void PPU::fetch_objects() {
 		tiles_fetched += tiles_this_sprite;
 		if (tiles_fetched > 34) {
 			if (!time_over) {
-				std::cout << "[DIAG] time_over SET at vcounter=" << std::dec << vcounter << "\n";
+				/*std::cout << "[DIAG] time_over SET at vcounter=" << std::dec << vcounter << "\n";*/
 			}
 			time_over = true;
 			break;
@@ -470,7 +528,7 @@ void PPU::render_obj_scanline(ObjectLayer& obj) {
 	scanline.fill(transparent_pixel);
 
 	for (auto& o : object_buffer) {
-		int x = hires_mode ? o.x_coordinate : (o.x_coordinate * 2);
+		int x = o.x_coordinate * 2;
 
 		int sprite_y = o.line_in_sprite;
 
@@ -784,9 +842,9 @@ void PPU::render_scanline() {
 
 	if (any_window_used) {
 		for (int x = 0; x < 512; x ++) {
-			int even_x = x / 2;
-			window1_dots[x] = (even_x >= window1.left_position) && (even_x <= window1.right_position);
-			window2_dots[x] = (even_x >= window2.left_position) && (even_x <= window2.right_position);
+			int screen_x = hires_mode ? x : (x / 2);
+			window1_dots[x] = (screen_x >= window1.left_position) && (screen_x <= window1.right_position);
+			window2_dots[x] = (screen_x >= window2.left_position) && (screen_x <= window2.right_position);
 		}
 	}
 	if (bg1.main_screen || bg1.sub_screen) { render_bg_scanline(bg1); }

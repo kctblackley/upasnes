@@ -2,7 +2,7 @@
 #include <iomanip>
 #include <sstream>
 
-constexpr bool FORCE_LOROM = false;
+constexpr bool FORCE_LOROM = false; // Needed for the Burn-In Test and Aging Test ROMs as they have a weird header
 constexpr bool FORCE_HIROM = false;
 
 constexpr size_t HEADER_BASE = 0xFFC0;

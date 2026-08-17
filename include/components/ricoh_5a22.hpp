@@ -30,6 +30,8 @@
 #define HVBJOY_ADDRESS 0x4212
 #define JOY1L_ADDRESS 0x4218
 #define JOY1H_ADDRESS 0x4219
+#define JOY2L_ADDRESS 0x421A
+#define JOY2H_ADDRESS 0x421B
 #define WRIO_ADDRESS 0x4201
 #define RDIO_ADDRESS 0x4213
 
@@ -125,7 +127,7 @@ public:
 			return mregs.HVBJOY;
 		}
 		
-		if (addr.offset == JOY1L_ADDRESS || addr.offset == JOY1H_ADDRESS) {
+		if (addr.offset == JOY1L_ADDRESS || addr.offset == JOY1H_ADDRESS || addr.offset == JOY2L_ADDRESS || addr.offset == JOY2H_ADDRESS ) {
 			return renderer->get_joypad(addr.offset);
 		}
 
@@ -348,7 +350,7 @@ public:
 	CycleCount cycle;
 
 private:
-	
+
 	Bus* bus = nullptr;
 
 	CycleCount instruction_cycle; 
@@ -381,4 +383,7 @@ private:
 	bool new_operand = false;
 
 	int executed = 0;
+
+	// Just because I am curious...
+	std::vector<Byte> emulation_mode_executed {}; // Seeing which emulation mode instructions actually get executed
 };

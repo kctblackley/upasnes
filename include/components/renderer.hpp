@@ -4,6 +4,17 @@
 
 #define JOY1L_ADDRESS 0x4218
 #define JOY1H_ADDRESS 0x4219
+#define JOY2L_ADDRESS 0x421A
+#define JOY2H_ADDRESS 0x421B
+
+struct ControllerState {
+
+	bool buttons[10] {};
+	int16_t axis_x = 0;
+	int16_t axis_y = 0;
+
+	bool connected = false;
+};
 
 class Renderer {
 public:
@@ -21,7 +32,7 @@ public:
 		screen_width = width;
 		screen_height = height;
 
-		SDL_Init(SDL_INIT_VIDEO);
+		SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK);
 
 		// Main window
 		window = SDL_CreateWindow(
@@ -91,29 +102,28 @@ public:
 			);
 		}
 
-		SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK);
-
 		int count = 0;
-		SDL_JoystickID* joysticks = SDL_GetJoysticks(&count);
+		SDL_JoystickID* ids = SDL_GetJoysticks(&count);
 
-		if (count > 0) {
-		    joystick = SDL_OpenJoystick(joysticks[0]);
+		for (int i = 0; i < std::min(count, 2); ++i) {
+		    joysticks[i] = SDL_OpenJoystick(ids[i]);
 
-		    if (joystick) {
-		        std::cout << "Opened joystick: "
-		                  << SDL_GetJoystickName(joystick)
+		    if (joysticks[i]) {
+		        std::cout << "Opened controller " << i + 1 << ": "
+		                  << SDL_GetJoystickName(joysticks[i])
 		                  << '\n';
 		    }
 		}
 
-		SDL_free(joysticks);
+		SDL_free(ids);
 	}
 
 	Byte get_joypad(uint16_t offset) {
-		if (offset == JOY1L_ADDRESS) {
-			return joy1l;
-		} else if (offset == JOY1H_ADDRESS) {
-			return joy1h;
+		switch (offset) {
+			case JOY1L_ADDRESS: return joy1l;
+			case JOY1H_ADDRESS: return joy1h;
+			case JOY2L_ADDRESS: return joy2l;
+			case JOY2H_ADDRESS: return joy2h;
 		}
 		return 0xFF;
 	}
@@ -256,6 +266,58 @@ public:
 		}
 	}
 
+	void update_controller(ControllerState& controller, Byte& joyl, Byte& joyh, bool keyboard = false) {
+	    bool up    = controller.axis_y < -AXIS_THRESHOLD;
+	    bool down  = controller.axis_y >  AXIS_THRESHOLD;
+	    bool left  = controller.axis_x < -AXIS_THRESHOLD;
+	    bool right = controller.axis_x >  AXIS_THRESHOLD;
+
+	    bool select = controller.buttons[8];
+	    bool start  = controller.buttons[9];
+
+	    bool x = controller.buttons[0];
+	    bool a = controller.buttons[1];
+	    bool b = controller.buttons[2];
+	    bool y = controller.buttons[3];
+
+	    bool l = controller.buttons[4];
+	    bool r = controller.buttons[5];
+
+	    joyl =
+	          (a << 7)
+	        | (x << 6)
+	        | (l << 5)
+	        | (r << 4);
+
+	    joyh =
+	          (b      << 7)
+	        | (y      << 6)
+	        | (select << 5)
+	        | (start  << 4)
+	        | (up     << 3)
+	        | (down   << 2)
+	        | (left   << 1)
+	        | (right  << 0);
+
+	    if (keyboard) {
+	    	const bool* keys = SDL_GetKeyboardState(nullptr);
+		
+			joyl |= (keys[SDL_SCANCODE_S]     << 7)  // A
+	              | (keys[SDL_SCANCODE_D]     << 6)  // X
+	              | (keys[SDL_SCANCODE_Q]     << 5)  // L
+	              | (keys[SDL_SCANCODE_W]     << 4); // R
+
+	        joyh |= (keys[SDL_SCANCODE_Z]     << 7)  // B
+			      | (keys[SDL_SCANCODE_X]     << 6)  // Y
+			      | (keys[SDL_SCANCODE_A]     << 5)  // Select
+				  | (keys[SDL_SCANCODE_RETURN]<< 4)  // Start
+				  | (keys[SDL_SCANCODE_UP]    << 3)  // D-Pad
+				  | (keys[SDL_SCANCODE_DOWN]  << 2)
+				  | (keys[SDL_SCANCODE_LEFT]  << 1)
+				  | (keys[SDL_SCANCODE_RIGHT] << 0);
+	    }
+	}
+
 	void loop() {
 		SDL_Event event;
 		while (SDL_PollEvent(&event)) {
@@ -266,64 +328,57 @@ public:
 		        break;
 
 		    case SDL_EVENT_JOYSTICK_BUTTON_DOWN:
-		        gamepad_buttons[event.jbutton.button] = true;
-		        break;
+		    	for (int i = 0; i < 2; ++i) {
+			        if (joysticks[i] &&
+			            SDL_GetJoystickID(joysticks[i]) == event.jbutton.which) {
+
+			            controllers[i].buttons[event.jbutton.button] = true;
+			            break;
+			        }
+			    }
+			    break;
 
 		    case SDL_EVENT_JOYSTICK_BUTTON_UP:
-		        gamepad_buttons[event.jbutton.button] = false;
-		        break;
+		        for (int i = 0; i < 2; ++i) {
+			        if (joysticks[i] &&
+			            SDL_GetJoystickID(joysticks[i]) == event.jbutton.which) {
+
+			            controllers[i].buttons[event.jbutton.button] = false;
+			            break;
+			        }
+			    }
+			    break;
 
 		    case SDL_EVENT_JOYSTICK_AXIS_MOTION:
-		        if (event.jaxis.axis == 0) {
-		            axis_x = event.jaxis.value;
-		        }
-		        else if (event.jaxis.axis == 1) {
-		            axis_y = event.jaxis.value;
-		        }
-		        break;
+		    	for (int i = 0; i < 2; ++i) {
+			        if (joysticks[i] &&
+			            SDL_GetJoystickID(joysticks[i]) == event.jaxis.which) {
+
+			        	if (event.jaxis.axis == 0) {
+			        		controllers[i].axis_x = event.jaxis.value;
+			        	} else {
+			        		controllers[i].axis_y = event.jaxis.value;
+			        	}
+			            break;
+			        }
+			    }
+			    break;
 		    }
 		}
 
 	    const bool* keys = SDL_GetKeyboardState(nullptr);
 		
-		bool up    = keys[SDL_SCANCODE_UP]    || axis_y < -AXIS_THRESHOLD;
-		bool down  = keys[SDL_SCANCODE_DOWN]  || axis_y >  AXIS_THRESHOLD;
-		bool left  = keys[SDL_SCANCODE_LEFT]  || axis_x < -AXIS_THRESHOLD;
-		bool right = keys[SDL_SCANCODE_RIGHT] || axis_x >  AXIS_THRESHOLD;
-
-		bool select = keys[SDL_SCANCODE_A]      || gamepad_buttons[8];
-		bool start  = keys[SDL_SCANCODE_RETURN] || gamepad_buttons[9];
-
-		bool x = keys[SDL_SCANCODE_D] || gamepad_buttons[0];
-		bool a = keys[SDL_SCANCODE_S] || gamepad_buttons[1];
-		bool b = keys[SDL_SCANCODE_Z] || gamepad_buttons[2];
-		bool y = keys[SDL_SCANCODE_X] || gamepad_buttons[3];
-
-		bool l = keys[SDL_SCANCODE_Q] || gamepad_buttons[4];
-		bool r = keys[SDL_SCANCODE_W] || gamepad_buttons[5];
-
-		joy1l =
-		      (a << 7)
-		    | (x << 6)
-		    | (l << 5)
-		    | (r << 4);
-
-		joy1h =
-		      (b      << 7)
-		    | (y      << 6)
-		    | (select << 5)
-		    | (start  << 4)
-		    | (up     << 3)
-		    | (down   << 2)
-		    | (left   << 1)
-		    | (right  << 0);
+		update_controller(controllers[0], joy1l, joy1h, true);
+		update_controller(controllers[1], joy2l, joy2h);
 
 	}
 
 	void close_window() {
-		if (joystick) {
-		    SDL_CloseJoystick(joystick);
-		    joystick = nullptr;
+		for (SDL_Joystick*& joystick : joysticks) {
+		    if (joystick) {
+		        SDL_CloseJoystick(joystick);
+		        joystick = nullptr;
+		    }
 		}
 
 		if (texture) {
@@ -396,8 +451,10 @@ private:
 
 	bool closed = true;
 	Byte joy1l, joy1h = 0x00;
+	Byte joy2l, joy2h = 0x00;
 
-	SDL_Joystick* joystick = nullptr;
+	SDL_Joystick* joysticks[2] = { nullptr, nullptr };
+	ControllerState controllers[2];
 
 	bool gamepad_buttons[10]{};
 

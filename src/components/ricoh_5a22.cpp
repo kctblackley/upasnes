@@ -2,12 +2,15 @@
 #include <iomanip>
 #include <cstdint>
 #include <array>
+#include <algorithm>
 #include <cstdlib>
 #include "ricoh_5a22.hpp"
 #include "ricoh_5a22_opcode_info.hpp"
 #include "bus.hpp"
 #include "dma.hpp"
 #include "logging_options.hpp"
+
+constexpr int LOG_EMULATION_MODE = false;
 
 namespace {
 	std::string byte_hex(Byte b) {
@@ -79,6 +82,14 @@ void Ricoh5A22::tick_multiply_divisor() {
 }
 
 void Ricoh5A22::log_ricoh() {
+	if constexpr (LOG_EMULATION_MODE) {
+		if (instruction_cycle == 0 && BufferOpCode < 256 && regs.emulation_mode) {
+			if (std::find(emulation_mode_executed.begin(), emulation_mode_executed.end(), BufferOpCode) == emulation_mode_executed.end()) {
+				emulation_mode_executed.push_back(BufferOpCode);
+				std::cout << "EMULATION MODE " << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(BufferOpCode) << "\n";
+			}
+		}
+	}
 	if constexpr (SHOW_LOGS) {
 		if (instruction_cycle == 0) {
 			executed++;

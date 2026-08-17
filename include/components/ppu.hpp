@@ -126,7 +126,7 @@ public:
 	Pixel fetch_bg_pixel(BG& bg, uint16_t screen_x);
 	Pixel fetch_mode7_pixel(BG& bg, uint16_t screen_x);
 	void fetch_objects();
-	void push_pixel(BG& bg, Pixel px, int& dot);
+	void push_pixel(BG& bg, const Pixel& px, int& dot);
 	void render_bg_scanline(BG& bg);
 	void render_obj_scanline(ObjectLayer& obj);
 	void render_scanline();
@@ -563,6 +563,7 @@ public:
 			//std::cout << "CHANGED BG MODE TO "
 			         // << std::dec << (int)(bg_mode) << "\n";
 
+			update_hires();
 			update_priority();
 		}
 
@@ -672,10 +673,12 @@ public:
 			screen_interlacing = (value >> 0) & 1;
 			obj_interlacing = (value >> 1) & 1;
 			overscan_mode = (value >> 2) & 1;
-			hires_mode = (value >> 3) & 1;
+			pseudo_hires_mode = (value >> 3) & 1;
 
 			extbg_mode = (value >> 6) & 1;
 			external_sync = (value >> 7) & 1;
+
+			update_hires();
 		}
 
 		// Mode 7
@@ -1118,6 +1121,10 @@ public:
 		this->dma = dma;
 	}
 
+	void update_hires() {
+		hires_mode = pseudo_hires_mode || (bg_mode == 5) || (bg_mode == 6);
+	}
+
 private:
 
 	Ricoh5A22* cpu = nullptr;
@@ -1185,6 +1192,7 @@ private:
 	bool obj_interlacing = false;
 	bool overscan_mode = false;
 	bool hires_mode = false;
+	bool pseudo_hires_mode = false;
 	bool extbg_mode = false;
 	bool external_sync = false;
 

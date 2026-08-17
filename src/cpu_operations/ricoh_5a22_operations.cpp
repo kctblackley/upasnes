@@ -5317,6 +5317,9 @@ Instruction<Ricoh5A22> e_9d = {
 	NEXT_OPCODE
 };
 
+// Thank you to Layle from the EmuDev Discord server for noticing a major typo in the implementation of opcode 9E.
+// This fixed Earthbound, Chrono Trigger, Tales of Phantasia, and FFVI (and other games relying on this instruction)
+
 // STZ (9E)
 Instruction<Ricoh5A22> n_9e = {
 	MakeHandler(Ricoh5A22Functions::IncrementPC),

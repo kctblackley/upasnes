@@ -253,12 +253,16 @@ public:
 		    [&](auto& m)
 		    {
 		        m.load_rom(rom);
-		        m.load_sram(header.ram_size);
+		        m.load_sram(header.ram_size, &hardware, &header);
 		        m.connect_cpu(cpu);
 		        m.to_string();
 		    },
 		    mapper
 		);
+
+		if (hardware.superfx_revision != SuperFXRevision::None) {
+			superfx.build_game_pak_ram(header.checksum);
+		}
 
 		is_fastrom_cartridge = (header.map_mode & 0x10) != 0;
 		std::cout << header.title << "\n";
@@ -359,4 +363,6 @@ private:
 	std::variant<LoROM, HiROM, ExHiROM> mapper;
 
 	SNESAddress address_bus;
+
+	SuperFX superfx;
 };
