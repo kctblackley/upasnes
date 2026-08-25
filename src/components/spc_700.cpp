@@ -38,8 +38,6 @@ Byte SPC700::trace_read(Address addr) const
 	addr &= 0xFFFF;
 
 	if (addr >= 0xFD && addr <= 0xFF) {
-		// Timer output registers are destructive on a real read.
-		// Return their current value without clearing them.
 		return timers[addr - 0xFD].output;
 	}
 
@@ -239,11 +237,11 @@ void SPC700::accumulate_dsp(CycleCount delta) {
 }
 
 void SPC700::log_spc() {
-	if constexpr (SHOW_LOGS) {
+	/*if constexpr (SHOW_LOGS) {
 		if (instruction_cycle == 0 && BufferOpCode < 256) {
 			log_instruction();
 		}
-	}
+	}*/
 }
 
 void SPC700::tick_component() { // when the component is ticked, it does a half tick in actuality

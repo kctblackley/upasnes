@@ -222,9 +222,14 @@ void PPU::render_bg_scanline(BG& bg) {
 	bool native_hires = (bg_mode == 5 || bg_mode == 6);
 	int sub_px = native_hires ? (bg.bghofs & 15) : (bg.bghofs & 7);
 	int dot = 0;
-	
+	int guard = 0;
 	while (dot < 512) {
-
+		if (++guard > 10000) {
+	        std::cout << "STUCK: dot=" << dot << " sub_px=" << sub_px
+	                   << " bg_mode=" << bg_mode << " layer=" << bg.layer << "\n";
+	        std::abort();
+	    }
+	    guard++;
 		uint16_t xcounter = native_hires ? dot : (dot >> 1);
 		if (bg_mode == 7) {
 			fetched_pixel = fetch_mode7_pixel(bg, xcounter);
@@ -673,13 +678,9 @@ inline int clamp(int value, int min, int max) {
 }
 
 Pixel PPU::colour_math(Pixel main, Pixel sub, bool ignore_half) {
-	/*
+	
 	// POSSIBLY INCORRECT
 	if (!main.colour_math || (col.addend == 1 && sub.transparent)) {
-		return main;
-	}*/
-
-	if (!main.colour_math || sub.transparent) {
 		return main;
 	}
 

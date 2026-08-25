@@ -1134,8 +1134,8 @@ private:
 	bool time_over = false;
 	bool range_over = false;
 	bool master_slave_mode = false;
-	Byte ppu1_version = 1;
-	Byte ppu2_version = 3;
+	Byte ppu1_version = PPU1_VERSION;
+	Byte ppu2_version = PPU2_VERSION;
 	Byte region = 0;
 
 

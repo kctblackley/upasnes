@@ -1,45 +1,15 @@
 #include "sdsp.hpp"
 #include "apubus.hpp"
 
-constexpr int ENVELOPE_COUNTER_RANGE = 30720;
-
-constexpr uint32_t envelope_period_table[32] = {
-    ENVELOPE_COUNTER_RANGE + 1, 2048, 1536,
-    1280, 1024, 768,
-    640,  512,  384,
-    320,  256,  192,
-    160,  128,  96,
-    80,   64,   48,
-    40,   32,   24,
-    20,   16,   12,
-    10,   8,    6,
-    5,    4,    3,
-    2,    1
-};
-
-constexpr uint32_t envelope_offset_table[32] = {
-    0,   0,    1040,
-    536, 0,    1040,
-    536, 0,    1040,
-    536, 0,    1040,
-    536, 0,    1040,
-    536, 0,    1040,
-    536, 0,    1040,
-    536, 0,    1040,
-    536, 0,    1040,
-    536, 0,    1040,
-    536, 0
-};
-
 void Voice::mem_write(Word address, Byte value) {
 	if (bus) {
-		bus->write(address, value);
+		bus->aram_write(address, value);
 	}
 }
 
 Byte Voice::mem_read(Word address) {
 	if (bus) {
-		return bus->read(address);
+		return bus->aram_read(address);
 	} else {
 		return 0x00;
 	}
@@ -97,6 +67,7 @@ void Voice::decode_brr_block() {
 		}
 
 		sample = std::clamp(sample, -32768, 32767);
+		sample = ((sample & 0x7FFF) ^ 0x4000) - 0x4000;
 		sample = sample & ~1;
 		
 		decoded_samples[i] = sample;
@@ -146,16 +117,31 @@ bool Voice::fire(int rate) {
 	if (rate == 0) {
 		return false;
 	}
-	return ((envelope_tick + envelope_offset_table[rate]) % envelope_period_table[rate]) == 0;
+
+	if (fire_countdown[rate] == 0) {
+		fire_countdown[rate] = ((envelope_tick + envelope_offset_table[rate])
+			% envelope_period_table[rate]) + 1;
+	}
+
+	fire_countdown[rate]--;
+
+	if (fire_countdown[rate] == 0) {
+		fire_countdown[rate] = envelope_period_table[rate];
+		return true;
+	}
+	return false;
 }
 
 void Voice::calculate_envelope() {
+	is_adsr = adsr1 & 0x80;
+
 	if (envelope_tick == 0) {
 		envelope_tick = ENVELOPE_COUNTER_RANGE - 1;
 	} else {
 		envelope_tick--;
 	}
-	if (is_adsr) {
+	
+	if (is_adsr || envelope_state == EnvelopeState::RELEASE) {
 		switch (envelope_state) {
 		case EnvelopeState::ATTACK:
 			if (fire(attack_rate)) {
@@ -191,7 +177,51 @@ void Voice::calculate_envelope() {
 		}
 	} else {
 		// GAIN (to implement)
-		envelope = 0x7FF;
+		if (!(gain & 0x80)) {
+			envelope = (gain & 0x7F) << 4;
+		} else {
+			switch (gain_mode) {
+			case 0:
+				if (fire(gain_value)) {
+					if (envelope > 32) {
+						envelope -= 32;
+					} else {
+						envelope = 0;
+					}
+				}
+				if (envelope < 0) {
+					envelope = 0;
+				}
+				break;
+			case 1:
+				if (fire(gain_value)) {
+					envelope -= (((envelope - 1) >> 8) + 1);
+				}
+				break;
+			case 2:
+				if (fire(gain_value)) {
+					envelope += 32;
+				}
+				break;
+			case 3:
+				if (fire(gain_value)) {
+					if (envelope < 0x600) {
+						envelope += 32;
+					} else {
+						envelope += 8;
+					}
+				}
+				break;
+			default:
+				break;
+			}
+			if (envelope < 0) {
+				envelope = 0;
+			}
+			if (envelope > 0x7FF) {
+				envelope = 0x7FF;
+			}
+		}
 	}
 }
 
@@ -199,14 +229,19 @@ void Voice::apply_envelope() {
 	final_sample = (current_sample * envelope) >> 11; 
 }
 
-void Voice::tick() {
+void Voice::tick(Sample modulation, Sample noise) {
 	if (!active) {
 		current_sample = 0;
 		return;
 	}
 	
 	uint16_t pitch = ((pitchr & 0x3F) << 8) | pitchl;
-	pitch_counter += pitch;
+	uint32_t step = pitch;
+	if (pitch_mod_enabled) {
+		int32_t factor = (modulation >> 4) + 0x400;
+		step = (pitch * factor) >> 10;
+	}
+	pitch_counter += step;
 
 	while (pitch_counter >= 0x1000) {
 		pitch_counter -= 0x1000;
@@ -230,8 +265,12 @@ void Voice::tick() {
 		gauss.newest   = decoded_samples[sample_index];
 	}
 	
-	current_sample = gauss_interpolate();
-	
+	if (noise_enabled) {
+		current_sample = noise;
+	} else {
+		current_sample = gauss_interpolate();
+	}
+
 	calculate_envelope();
 	apply_envelope();
 

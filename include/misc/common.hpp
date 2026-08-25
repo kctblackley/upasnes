@@ -17,8 +17,8 @@ using Quadrant = uint8_t;
 using Word = uint16_t;
 using Offset = uint16_t;
 using Address = uint32_t;
-using CycleCount = uint64_t;
-using TickCount = uint64_t;
+using CycleCount = int64_t;
+using TickCount = int64_t;
 
 
 // SNESAddress and Quadrant allow for easier access to areas of the SNES address space
@@ -80,9 +80,13 @@ inline Byte get_lo(Word word) {
 inline Byte get_hi(Word word) {
 	return (word & 0xFF00) >> 8;
 }
+
+
 Byte set_bit(Byte byte, Byte bit);
 Byte clear_bit(Byte byte, Byte bit);
 
+void set_lo(uint16_t& val, uint8_t lo);
+void set_hi(uint16_t& val, uint8_t hi);
 // Timing constants
 constexpr CycleCount MASTER_CLOCK = 21477272;
 constexpr CycleCount RICOH_5A22_CYCLE = 6;

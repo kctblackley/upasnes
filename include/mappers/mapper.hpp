@@ -9,7 +9,7 @@
 struct CartridgeHardware;
 struct CartridgeHeader;
 
-template <class MapperT>
+template<typename MapperT>
 class Mapper {
 public:
 	Byte read(SNESAddress address);
@@ -35,6 +35,8 @@ public:
 			std::cout << "SUCCESSFULLY!\n";
 		}
 	}
+
+	Byte get_open_bus();
 
 protected:
 

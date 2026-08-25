@@ -106,7 +106,26 @@ std::string word_to_hex(Word value);
 class Cartridge : public Store {
 public:
 
+	Byte get_open_bus() {
+		return std::visit([&](auto& m) { return m.get_open_bus(); }, mapper);
+	}
+
 	Byte read(SNESAddress address) override {
+		if (hardware.coprocessor == Coprocessor::SuperFX && superfx.snes_handles(address)) {
+			/*if (superfx.is_open_bus(address)) {
+				return get_open_bus();
+			}*/
+	 		return superfx.snes_read(address);
+		}
+		if (hardware.coprocessor == Coprocessor::SuperFX) {
+			Byte override_value;
+			if (superfx.vector_override(address, override_value)) {
+				return override_value;
+			}
+			if (!superfx.allow_mapper(address)) {
+				return get_open_bus();
+			}
+		}
 		address_bus = address;
 		return std::visit(
 		    [&](auto& m)
@@ -118,6 +137,24 @@ public:
 	}
 
 	void write(SNESAddress address, Byte value) override {
+		if (hardware.coprocessor == Coprocessor::SuperFX) {
+			bool in_io_bank = (address.bank <= 0x3F) || (address.bank >= 0x80 && address.bank <= 0xBF);
+			if (in_io_bank && address.offset >= 0x3000 && address.offset <= 0x3FFF) {
+				std::cout << "[superfx-io-write] bank=" << byte_to_hex(address.bank)
+				          << " offset=" << word_to_hex(address.offset)
+				          << " value=" << byte_to_hex(value)
+				          << " snes_handles=" << (superfx.snes_handles(address) ? "true" : "false")
+				          << "\n";
+			}
+		}
+
+		if (hardware.coprocessor == Coprocessor::SuperFX && superfx.snes_handles(address)) {
+			superfx.snes_write(address, value);
+			return;
+		}
+		if (hardware.coprocessor == Coprocessor::SuperFX && !superfx.allow_mapper(address)) {
+			return;
+		}
 		address_bus = address;
 		std::visit(
 	        [&](auto& m)
@@ -126,6 +163,17 @@ public:
 	        },
 	        mapper
 	    );
+	}
+
+	Byte gsu_read(SNESAddress address) {
+		address_bus = address;
+		return std::visit(
+		    [&](auto& m)
+		    {
+		        return m.read(address);
+		    },
+		    mapper
+		);
 	}
 
 	SNESAddress get_address_bus() override {
@@ -260,25 +308,28 @@ public:
 		    mapper
 		);
 
-		if (hardware.superfx_revision != SuperFXRevision::None) {
+		if (hardware.coprocessor == Coprocessor::SuperFX) {
 			superfx.build_game_pak_ram(header.checksum);
+			superfx.set_revision(hardware.superfx_revision);
+			superfx.set_mapper_type(best->mapper == MapperType::HiROM);
+			superfx.connect_cpu(cpu);
 		}
 
 		is_fastrom_cartridge = (header.map_mode & 0x10) != 0;
 		std::cout << header.title << "\n";
 
+		superfx.connect_cartridge(this);
 		print_info();
 	}
 
 	void connect_cpu(Ricoh5A22* cpu) {
 	    std::visit([&](auto& m) { m.connect_cpu(cpu); }, mapper);
+	    superfx.connect_cpu(cpu);
 	}
 
 	void print_info() const {
-		std::cout << "========================================\n";
 		std::cout << "Cartridge Information\n";
-		std::cout << "========================================\n";
-
+		
 		std::cout << "Title:           " << header.title << '\n';
 		std::cout << "Mapper:          " << mapper_to_string(
 			std::visit(
@@ -348,8 +399,23 @@ public:
 		std::cout << "Chipset subtype: "
 		          << byte_to_hex(header.chipset_subtype)
 		          << '\n';
+	}
 
-		std::cout << "========================================\n";
+	void tick_coprocessor() {
+		if (hardware.coprocessor == Coprocessor::SuperFX) {
+			superfx.tick_component();
+		}
+	}
+
+	bool has_coprocessor() {
+		return hardware.coprocessor != Coprocessor::None;
+	}
+
+	CycleCount get_coprocessor_cycle() {
+		if (hardware.coprocessor == Coprocessor::SuperFX) {
+			return superfx.get_coprocessor_cycle();
+		}
+		return 0;
 	}
 
 private:
@@ -363,6 +429,6 @@ private:
 	std::variant<LoROM, HiROM, ExHiROM> mapper;
 
 	SNESAddress address_bus;
-
+	Ricoh5A22* ricoh_5a22 = nullptr;
 	SuperFX superfx;
 };

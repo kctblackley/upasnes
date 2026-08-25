@@ -2697,10 +2697,6 @@ namespace Ricoh5A22Functions {
 
 	template <typename CPUMode>
 	static void RTI(Ricoh5A22& cpu, bool skipped) {
-		// Note: cpu.regs.PB is already restored directly by the preceding
-		// Read<ReadFrom::Stack3, ReadTo::PB> micro-op in the native-mode
-		// opcode table (see the Read<> template's ReadTo::PB branch, which
-		// writes straight to cpu.regs.PB rather than cpu.BufferBank).
 		if constexpr (std::is_same_v<CPUMode, Mode::Native>) {
 			cpu.regs.S += 3;
 			cpu.regs.PC = cpu.BufferOperand;
@@ -2716,8 +2712,6 @@ namespace Ricoh5A22Functions {
 
 	template <typename CPUMode>
 	static void RTL(Ricoh5A22& cpu, bool skipped) {
-		// Note: cpu.regs.PB is already restored directly by the preceding
-		// Read<ReadFrom::Stack3, ReadTo::PB> micro-op (see RTI's note above).
 		if constexpr (std::is_same_v<CPUMode, Mode::Native>) {
 			cpu.regs.S += 3;
 		} else {

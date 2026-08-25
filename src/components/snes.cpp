@@ -46,10 +46,12 @@ void SNES::load_cartridge(const std::string& directory) {
 
 void SNES::tick_snes() {
 	CycleCount cpu_cycle = ricoh_5a22->get_cycle();
-	CycleCount spc_cycle = spc_700->get_cycle();
 	CycleCount ppu_cycle = ppu->get_cycle();
-
-	if (spc_cycle <= cpu_cycle && spc_cycle <= ppu_cycle) {
+	CycleCount spc_cycle = spc_700->get_cycle();
+	CycleCount coprocessor_cycle = bus->get_coprocessor_cycle();
+	if (bus->has_coprocessor() && coprocessor_cycle <= spc_cycle && coprocessor_cycle <= cpu_cycle && coprocessor_cycle <= ppu_cycle) {
+		bus->tick_coprocessor();
+	} else if (spc_cycle <= cpu_cycle && spc_cycle <= ppu_cycle) {
 		spc_700->tick_component();
 	} else if (cpu_cycle <= ppu_cycle) {
 		ricoh_5a22->tick_component();
@@ -58,6 +60,10 @@ void SNES::tick_snes() {
 	}
 
 	master_cycle = std::min({ ricoh_5a22->get_cycle(), spc_700->get_cycle(), ppu->get_cycle() });
+
+	if (bus->has_coprocessor()) {
+		master_cycle = std::min({master_cycle, bus->get_coprocessor_cycle()});
+	}
 }
 
 void SNES::poll() {

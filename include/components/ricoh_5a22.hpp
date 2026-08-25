@@ -349,6 +349,8 @@ public:
 
 	CycleCount cycle;
 
+	Byte get_open_bus();
+
 private:
 
 	Bus* bus = nullptr;

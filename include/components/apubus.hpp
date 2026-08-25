@@ -16,6 +16,14 @@ public:
 
 	void write(Word address, Byte value);
 
+	Byte aram_read(Word address) {
+		return data[address];
+	}
+
+	void aram_write(Word address, Byte value) {
+		data[address] = value;
+	}
+
 	void enable_ipl();
 	void disable_ipl();
 

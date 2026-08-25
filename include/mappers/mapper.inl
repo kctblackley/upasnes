@@ -1,4 +1,4 @@
-template <class MapperT>
+template<typename MapperT>
 Byte Mapper<MapperT>::read(SNESAddress address) {
 	if (auto idx = derived().rom_idx(address)) {
 		Byte value = rom[(*idx) % rom.size()];
@@ -18,7 +18,7 @@ Byte Mapper<MapperT>::read(SNESAddress address) {
 	return cpu->get_open_bus();
 }
 
-template <class MapperT>
+template<typename MapperT>
 void Mapper<MapperT>::write(SNESAddress address, Byte value) {
 	if (auto idx = derived().sram_idx(address)) {
 		if (sram.size() == 0) {

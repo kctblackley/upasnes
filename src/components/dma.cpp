@@ -12,7 +12,7 @@ void DMA::set_open_bus(Byte value) {
 
 // For these implementations, the state machine goes master cycle by master cycle
 // So that HDMA can suspend GPDMA when GPDMA is in the middle of a particular operation
-
+z
 void DMA::hdma_init() {
 	int penalty = 0;
 	bool any_enabled = false;

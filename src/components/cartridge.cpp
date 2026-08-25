@@ -93,7 +93,7 @@ void detect_superfx_revision(CartridgeHeader& h, const std::vector<Byte>& rom, C
 		}
 	}
 
-	// Use ROM signature
+	hardware.superfx_revision = SuperFXRevision::GSU2;
 }
 
 void detect_sa1_revision(CartridgeHeader& h, const std::vector<Byte>& rom, CartridgeHardware& hardware) {

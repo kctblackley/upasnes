@@ -9,6 +9,36 @@
 constexpr double pi = std::numbers::pi;
 using Sample = int32_t;
 
+constexpr int ENVELOPE_COUNTER_RANGE = 30720;
+
+constexpr uint32_t envelope_period_table[32] = {
+    ENVELOPE_COUNTER_RANGE + 1, 2048, 1536,
+    1280, 1024, 768,
+    640,  512,  384,
+    320,  256,  192,
+    160,  128,  96,
+    80,   64,   48,
+    40,   32,   24,
+    20,   16,   12,
+    10,   8,    6,
+    5,    4,    3,
+    2,    1
+};
+
+constexpr uint32_t envelope_offset_table[32] = {
+    0,   0,    1040,
+    536, 0,    1040,
+    536, 0,    1040,
+    536, 0,    1040,
+    536, 0,    1040,
+    536, 0,    1040,
+    536, 0,    1040,
+    536, 0,    1040,
+    536, 0,    1040,
+    536, 0,    1040,
+    536, 0
+};
+
 enum class EnvelopeState {
 	ATTACK,
 	DECAY,
@@ -69,6 +99,8 @@ public:
 			break;
 		case 0x7:
 			gain = value;
+			gain_mode  = (gain >> 5) & 0x03;
+			gain_value =  gain & 0x1F;
 			break;
 		}
 	}
@@ -100,7 +132,10 @@ public:
 			sustain_boundary = n * 0x100;
 
 		} else {
-			// GAIN (TO DO)
+			gain_mode = (gain >> 5) & 0x03;
+			gain_value = gain & 0x1F;
+
+			envelope = 0x0;
 		}
 	}
 
@@ -129,13 +164,7 @@ public:
 	}
 
 	void release() {
-		if (is_adsr) {
-			// ADSR
-			envelope_state = EnvelopeState::RELEASE;
-		} else {
-			// GAIN (to implement)
-			active = false;
-		}
+		envelope_state = EnvelopeState::RELEASE;
 	}
 
 	bool endx() { // <- IMPORTANT
@@ -170,11 +199,18 @@ public:
 	}
 
 	Sample gauss_interpolate();
+	
+	Sample modulation_output() const {
+		return outx;
+	}
 
-	void tick();
+	void tick(Sample modulation = 0, Sample noise = 0);
 	Byte mem_read(Word address);
 	void mem_write(Word address, Byte value);
 
+	bool is_echo_enabled() {
+		return echo_enabled;
+	}
 	// Sample outputting
 	StereoSample output();
 
@@ -213,6 +249,8 @@ private:
 	int envelope = 0;
 	uint32_t envelope_tick = 0;
 	EnvelopeState envelope_state = EnvelopeState::NONE;
+
+	uint32_t fire_countdown[32] = {};
 
 	Byte envx = 0x00;
 	int8_t outx =  0x00;
@@ -262,6 +300,13 @@ public:
 			v.set_id(id);
 			id++;
 		}
+
+		echo_index = 0;
+		echo_buffer_size = echo_buffer_entries();
+
+		for (auto& sample : echo_history) {
+			sample = {0, 0};
+		}
 	}
 
 	void close_audio() {
@@ -280,63 +325,68 @@ public:
 		}
 
 		// S-DSP registers
-		if (address == 0x0C) { mvoll = (int8_t)value; }
-		if (address == 0x1C) { mvolr = (int8_t)value; }
-		if (address == 0x2C) { evoll = (int8_t)value; }
-		if (address == 0x3C) { evolr = (int8_t)value; }
-		
-		if (address == 0x4C) {
+		if ( (address & 0xF) == 0xF && address < 0x80) {
+			fir[(address & 0xF0) >> 4] = value;
+		}
+
+		switch (address) {
+		case 0x0C: mvoll = (int8_t)value; break;
+		case 0x1C: mvolr = (int8_t)value; break;
+		case 0x2C: evoll = (int8_t)value; break;
+		case 0x3C: evolr = (int8_t)value; break;
+		case 0x4C:
 			kon = value;
 			kon_pending = kon_pending | value;
-		}
-		if (address == 0x5C) {
+			break;
+		case 0x5C:
 			koff = value;
 			koff_pending = koff_pending | value;
-		}
-		if (address == 0x6C) {
+			break;
+		case 0x6C:
 			flg = value;
 			noise_frequency = flg & 0x1F;
 			echo_disable = (flg & 0x20);
 			mute_all = (flg & 0x40);
 			soft_reset = (flg & 0x80);
-		}
-		if (address == 0x7C) {
+			break;
+		case 0x7C:
 			for (auto& v : voices) {
 				v.clear_endx();
 			}
-		}
-		if (address == 0x0D) { efb = (int8_t)value; }
-		
-		if (address == 0x2D) {
+			break;
+		case 0x0D: efb = (int8_t)value; break;
+		case 0x2D: {
 			pmon = value;
 			Byte tmp = pmon;
 			for (int v = 0; v < 8; v++) {
 				voices[v].pmon(tmp & 1);
 				tmp = tmp >> 1;
 			}
+			break;
 		}
-		if (address == 0x3D) {
+		case 0x3D: {
 			non = value;
 			Byte tmp = non;
 			for (int v = 0; v < 8; v++) {
 				voices[v].non(tmp & 1);
 				tmp = tmp >> 1;
 			}
+			break;
 		}
-		if (address == 0x4D) {
+		case 0x4D: {
 			eon = value;
 			Byte tmp = eon;
 			for (int v = 0; v < 8; v++) {
 				voices[v].eon(tmp & 1);
 				tmp = tmp >> 1;
 			}
+			break;
 		}
-		if (address == 0x5D) { dir = value; }
-		if (address == 0x6D) { esa = value; }
-		if (address == 0x7D) { edl = value & 0xF; }
-		if ( (address & 0xF) == 0xF && address < 0x80) {
-			fir[(address & 0xF0) >> 4] = value;
-		}	
+		case 0x5D: dir = value; break;
+		case 0x6D: esa = value; break;
+		case 0x7D: edl = value & 0xF; break;
+		default: break;
+		}
 
 		registers[address & 0x7F] = value;
 	}
@@ -395,9 +445,14 @@ public:
 	}
 
 	void process_kon() {
+		if (kon_pending == 0 && kon_delay_active == 0) {
+			return;
+		}
+
 		for (int v = 0; v < 8; v++) {
 			if (kon_pending & (1 << v)) {
 				kon_delay[v] = 5;
+				kon_delay_active |= (1 << v);
 				kon_pending = kon_pending & ~(1 << v);
 				continue;
 			}
@@ -407,12 +462,17 @@ public:
 
 				if (kon_delay[v] == 0) {
 					voices[v].key_on(dir);
+					kon_delay_active &= ~(1 << v);
 				}
 			}
 		}
 	}
 
 	void process_koff() {
+		if (koff_pending == 0) {
+			return;
+		}
+
 		for (int v = 0; v < 8; v++) {
 			if (koff_pending & (1 << v)) {
 				voices[v].release();
@@ -435,14 +495,85 @@ public:
 		return audio_buffer.samples_available();
 	}
 
+	void update_noise();
+
 	StereoSample output();
+
+	uint16_t echo_address() const {
+		return (static_cast<uint16_t>(esa) << 8) + (echo_index * 4);
+	}
+
+	StereoSample read_echo_sample() {
+		uint16_t address = echo_address();
+
+		uint16_t left = (mem_read(address + 1) << 8) | mem_read(address + 0);
+		uint16_t right = (mem_read(address + 3) << 8) | mem_read(address + 2);
+
+		return { static_cast<int16_t>(left), static_cast<int16_t>(right) };
+	}
+
+	void write_echo_sample(StereoSample sample) {
+		uint16_t address = echo_address();
+
+		mem_write(address + 0, sample.left & 0xFE);
+		mem_write(address + 1, sample.left >> 8);
+
+		mem_write(address + 2, sample.right & 0xFE);
+		mem_write(address + 3, sample.right >> 8);
+	}
+
+	uint16_t echo_buffer_entries() const {
+		if (edl == 0) {
+			return 1;
+		}
+
+		return edl << 9;
+	}
+
+	void advance_echo_index() {
+		echo_index++;
+
+		if (echo_index >= echo_buffer_size) {
+			echo_index = 0;
+			echo_buffer_size = echo_buffer_entries();
+		}
+	}
+
+	void push_echo_history(StereoSample sample) {
+		for (int i = 7; i > 0; i--) {
+			echo_history[i] = echo_history[i - 1];
+		}
+
+		echo_history[0] = sample;
+	}
+
+	StereoSample process_fir() {
+		int16_t left = 0;
+		int16_t right = 0;
+
+		for (int i = 0; i < 7; i++) {
+			int32_t coefficient = fir[i];
+
+			left += ((int32_t)(echo_history[7 - i].left) * coefficient) >> 7;
+			right += ((int32_t)(echo_history[7 - i].right) * coefficient) >> 7;
+		}
+
+		int32_t coefficient7 = fir[7];
+		int32_t left_final = (int32_t)left + (((int32_t)echo_history[0].left * coefficient7) >> 7);
+		int32_t right_final = (int32_t)right + (((int32_t)echo_history[0].right * coefficient7) >> 7);
+
+		left_final = std::clamp(left_final, -32768, 32767);
+		right_final = std::clamp(right_final, -32768, 32767);
+		
+		return { (int16_t)(left_final), (int16_t)(right_final) };
+	}
 
 private:
 	APUBus* bus = nullptr;
 
 	std::array<Voice, 8> voices {};
 	std::array<Byte, 128> registers {}; // fallback (temporary)
-	std::array<Byte, 8> fir {};
+	std::array<int8_t, 8> fir {};
 	
 	// main volume (left and right)
 	int8_t mvoll = 0x00;
@@ -459,11 +590,12 @@ private:
 	Byte koff_pending = 0x00;
 
 	std::array<Byte, 8> kon_delay {};
+	Byte kon_delay_active = 0x00;
 
-	Byte flg = 0x00; // RMEN NNNN
-	bool soft_reset = false;
-	bool mute_all = false;
-	bool echo_disable = false;
+	Byte flg = 0xE0; // RMEN NNNN
+	bool soft_reset = true;
+	bool mute_all = true;
+	bool echo_disable = true;
 	Byte noise_frequency = 0x00;
 
 	Byte endx = 0x00; // end of sample flag for each channel
@@ -480,14 +612,12 @@ private:
 
 	AudioBuffer audio_buffer;
 
-	// Buffer testing features
+	uint16_t noise_lfsr = 0x7FFF;
+	uint32_t noise_counter = 0;
+	Sample noise_sample = 0;
 
-	double sine_phase = 0.0;
+	uint16_t echo_index = 0;
+	uint16_t echo_buffer_size = 1;
+	std::array<StereoSample, 8> echo_history {};
 
-	uint32_t sine_phase_accum = 0;
-	static constexpr uint32_t SINE_PHASE_STEP =
-	    static_cast<uint32_t>((440.0 / 32000.0) * 4294967296.0); // 440Hz @ 32kHz, Q32 fixed-point
-
-	  long dropped_pushes = 0;
 };
-

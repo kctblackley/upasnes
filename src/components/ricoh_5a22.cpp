@@ -281,3 +281,7 @@ void Ricoh5A22::test_poke(Address addr, Byte value) {
 void Ricoh5A22::set_fastrom_from_bus(bool fastrom_enabled) {
 	bus->set_fastrom(fastrom_enabled);
 }
+
+Byte Ricoh5A22::get_open_bus() {
+	return open_bus;
+}

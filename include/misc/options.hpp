@@ -13,7 +13,4 @@ constexpr bool LOG_CGRAM = false;
 constexpr bool LOG_VRAM = false;
 constexpr bool TESTING = false;
 constexpr size_t TARGET_AUDIO_BUFFER = 4096;
-
-// JUST FOR ME! :)
-// EARTHBOUND HATES ME, WHY DOES POO REFUSE TO EXIST!?!?
 constexpr bool PLAYING_EARTHBOUND = false;

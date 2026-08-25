@@ -23,6 +23,18 @@ public:
 	void connect_cpu(Ricoh5A22* cpu);
 	void connect_apu(SPC700* apu);
 	void connect_ppu(PPU* ppu);
+
+	void tick_coprocessor() {
+		cartridge->tick_coprocessor();
+	}
+
+	bool has_coprocessor() {
+		return cartridge->has_coprocessor();
+	}
+
+	CycleCount get_coprocessor_cycle() {
+		return cartridge->get_coprocessor_cycle();
+	}
 	
 	void set_wait_callback(WaitCallback callback);
 

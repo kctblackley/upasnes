@@ -65,9 +65,12 @@ Store* Bus::system_area(SNESAddress address) {
 	if (address.offset >= WMDATA_ADDRESS && address.offset <= WMADDH_ADDRESS) {
 		return wram.get();
 	}
-	if (address.offset > WMADDH_ADDRESS && address.offset < CPU_PORTS_SECTION) {
+	if (address.offset > WMADDH_ADDRESS && address.offset < 0x3000) {
 		return open_bus.get();
 	}
+	if (address.offset >= 0x3000 && address.offset < 0x6000) {
+        return cartridge.get();
+    }
 	if (address.offset >= EXPANSION_DATA_SECTION && address.offset < CARTRIDGE_SECTION) {
 		//std::cout << "ACCESSING EXPANSION DATA\n";
 		return cartridge.get();
