@@ -140,6 +140,7 @@ public:
 		lines_to_transfer = value & 0x7F;
 		if (lines_to_transfer == 0) {
 			lines_to_transfer = 128;
+			repeat = false;
 		}
 		ntrl = value;
 	}

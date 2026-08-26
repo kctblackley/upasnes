@@ -1,22 +1,21 @@
 #include "ppu.hpp"
-#include "ricoh_5a22.hpp"
-#include "bus.hpp"
 #include "dma.hpp"
+#include "bus.hpp"
+#include "ricoh_5a22.hpp"
 #include <iostream>
 #include <algorithm>
 
 constexpr int DOTS_PER_LINE = 341;
 constexpr int HBLANK_DOTS = 278;
 constexpr int CPU_PAUSE = 134;
-constexpr Address HVBJOY = 0x4212;
 constexpr CycleCount PPU_CYCLE = 1;
 
 constexpr int HDMA_INIT_DOT = 6;
 constexpr int HDMA_TRANSFER_DOT = 278;
 
 void PPU::window_mask(std::array<Pixel, 512>& scanline, bool window1_enabled, bool window2_enabled, bool window1_inverted, bool window2_inverted, Byte mask_logic, bool colour_math) {
-	int step = hires_mode ? 1 : 2;
-	for (int dot = 0; dot < 512; dot += step) {
+	int x = 0;
+	for (int dot = 0; dot < 512; dot += 2) {
 		bool window1_mask = window1_dots[dot];
 		bool window2_mask = window2_dots[dot];
 		if (window1_inverted) { window1_mask = !window1_mask; }
@@ -36,9 +35,7 @@ void PPU::window_mask(std::array<Pixel, 512>& scanline, bool window1_enabled, bo
 
 		if (mask) {
 			scanline[dot].transparent = true;
-			if (!hires_mode) {
-				scanline[dot + 1].transparent = true;
-			}
+			scanline[dot + 1].transparent = true;
 		}
 	}
 }
@@ -79,20 +76,7 @@ Pixel PPU::fetch_mode7_pixel(BG& bg, uint16_t xcounter) {
 		colour = colour & 0x7F;
 	}
 
-	Word snes_colour;
-	if (col.direct_colour_mode && bg.layer == 1) {
-		Byte r3 =  colour       & 0x7;
-		Byte g3 = (colour >> 3) & 0x7;
-		Byte b2 = (colour >> 6) & 0x3;
-
-		Byte r5 = r3 << 2;
-		Byte g5 = g3 << 2;
-		Byte b5 = b2 << 3;
-
-		snes_colour = (b5 << 10) | (g5 << 5) | r5;
-	} else {
-		snes_colour = cgram.data[colour];
-	}
+	Word snes_colour = cgram.data[colour];
 	Pixel px;
 	px.transparent = (colour == 0);
 	px.colour = snes_colour;
@@ -203,15 +187,14 @@ void PPU::render_oam_view() {
 	}
 }
 
-void PPU::push_pixel(BG& bg, const Pixel& px, int& dot, bool native_hires) {
+void PPU::push_pixel(BG& bg, Pixel px, int& dot) {
 	bg.main_scanline[dot] = px;
 	bg.sub_scanline[dot]  = px;
+	dot++;
 
-	if (!native_hires) {
-		bg.main_scanline[dot + 1] = px;
-		bg.sub_scanline [dot + 1]  = px;
-		dot += 2;
-	} else {
+	if (!hires_mode) {
+		bg.main_scanline[dot] = px;
+		bg.sub_scanline [dot]  = px;
 		dot++;
 	}
 }
@@ -219,21 +202,15 @@ void PPU::push_pixel(BG& bg, const Pixel& px, int& dot, bool native_hires) {
 void PPU::render_bg_scanline(BG& bg) {
 	Pixel fetched_pixel;
 
-	bool native_hires = (bg_mode == 5 || bg_mode == 6);
-	int sub_px = native_hires ? (bg.bghofs & 15) : (bg.bghofs & 7);
+	int sub_px = bg.bghofs & 7;
 	int dot = 0;
-	int guard = 0;
+	
 	while (dot < 512) {
-		if (++guard > 10000) {
-	        std::cout << "STUCK: dot=" << dot << " sub_px=" << sub_px
-	                   << " bg_mode=" << bg_mode << " layer=" << bg.layer << "\n";
-	        std::abort();
-	    }
-	    guard++;
-		uint16_t xcounter = native_hires ? dot : (dot >> 1);
+
+		uint16_t xcounter = hires_mode ? dot : (dot >> 1);
 		if (bg_mode == 7) {
 			fetched_pixel = fetch_mode7_pixel(bg, xcounter);
-			push_pixel(bg, fetched_pixel, dot, native_hires);
+			push_pixel(bg, fetched_pixel, dot);
 		} else {
 			int bg_x, bg_y;
 			int mosaic_x, mosaic_y;
@@ -249,10 +226,10 @@ void PPU::render_bg_scanline(BG& bg) {
 				bg_y = (vcounter + bg.bgvofs) & 0x3FF;
 			}
 
-			int tile_x = bg_x >> (native_hires ? 4 : 3);
+			int tile_x = bg_x >> 3;
 			int tile_y = bg_y >> 3;
 
-			int pixel_x = bg_x & (native_hires ? 0xF : 7);
+			int pixel_x = bg_x & 7;
 			int pixel_y = bg_y & 7;
 
 			int map_width_tiles  = bg.horizontal_tilemap_count ? 64 : 32;
@@ -265,13 +242,8 @@ void PPU::render_bg_scanline(BG& bg) {
 			int screen_y = tile_y >> 5;
 			int screen = 0;
 
-			if (bg.horizontal_tilemap_count) {
-				screen += screen_x;
-			}
-
-			if (bg.vertical_tilemap_count) {
-				screen += screen_y * (bg.horizontal_tilemap_count ? 2 : 1);
-			}
+			if (bg.horizontal_tilemap_count) { screen += screen_x; }
+			if (bg.vertical_tilemap_count)   { screen += screen_y * (bg.horizontal_tilemap_count ? 2 : 1); }
 
 			int local_x = tile_x & 31;
 			int local_y = tile_y & 31;
@@ -286,15 +258,7 @@ void PPU::render_bg_scanline(BG& bg) {
 			int palette  = (entry >> 10) & 0x7;
 			int priority = (entry >> 13) & 0x1;
 
-			if (native_hires) {
-				if (bg.character_size) {
-					int sub_y = (bg_y >> 3) & 1;
-
-					if (vflip) { sub_y ^= 1; }
-
-					tile_number += sub_y * 16;
-				}
-			} else if (bg.character_size) {
+			if (bg.character_size) {
 				int sub_x = (bg_x >> 3) & 1;
 				int sub_y = (bg_y >> 3) & 1;
 
@@ -308,6 +272,11 @@ void PPU::render_bg_scanline(BG& bg) {
 			if (vflip) {
 				pixel_y = pixel_y ^ 7;
 			}
+
+			Word tile_address = (bg.word_address + tile_number * (4 * bg.bpp)) & 0x7FFF;
+
+			DecodedRow* row = get_tile_row(tile_address, pixel_y, bg.bpp);
+			const auto& row_data = row->data;
 
 			int priority_value = 0;
 
@@ -336,67 +305,22 @@ void PPU::render_bg_scanline(BG& bg) {
 			px.layer = bg.layer;
 			px.colour_math = bg.enable_colour_math;
 
-			int character_width = native_hires ? 16 : 8;
-
-			while (sub_px < character_width && dot < 512) {
-
-				int current_tile_number = tile_number;
-
-				if (native_hires) {
-					int character_pixel = hflip ? (15 - sub_px) : sub_px;
-					current_tile_number += character_pixel >> 3;
-				}
-
-				Word tile_address = (bg.word_address + current_tile_number * (4 * bg.bpp)) & 0x7FFF;
-
-				DecodedRow* row = get_tile_row(tile_address, pixel_y, bg.bpp);
-				const auto& row_data = row->data;
-
-				int source_pixel_x;
-
-				if (native_hires) {
-					int character_pixel = hflip ? (15 - sub_px) : sub_px;
-					source_pixel_x = character_pixel & 7;
-				} else {
-					source_pixel_x = hflip ? (7 - sub_px) : sub_px;
-				}
-
+			while (sub_px < 8 && dot < 512) {
 				Byte colour;
 
-				if (bg.mosaic) {
-					int actual_xcounter = xcounter + sub_px;
-					int mosaic_size_pixels = mosaic_size + 1;
-					int mosaic_x = actual_xcounter - (actual_xcounter % mosaic_size_pixels);
-
-					int source_x = (mosaic_x + bg.bghofs) & 0x3FF;
-					int source_pixel_x = source_x & 7;
-
-					colour = hflip ? row_data[7 - source_pixel_x] : row_data[source_pixel_x];
+				if (hflip) {
+					colour = row_data[7 - sub_px];
 				} else {
-					colour = row_data[source_pixel_x];
+					colour = row_data[sub_px];
 				}
 
 				int cgram_index = palette_base + colour;
-				Word snes_colour;
-				if (col.direct_colour_mode && bg.bpp == 8) {
-					Byte r3 =  colour       & 0x7;
-					Byte g3 = (colour >> 3) & 0x7;
-					Byte b2 = (colour >> 6) & 0x3;
+				Word snes_colour = cgram.data[cgram_index];
 
-					Byte r5 = (r3 << 2) | ((palette & 0x1) << 1);
-					Byte g5 = (g3 << 2) | ((palette & 0x2) << 0);
-					Byte b5 = (b2 << 3) | ((palette & 0x4) << 0);
-
-					snes_colour = (b5 << 10) | (g5 << 5) | r5;
-				} else {
-					int cgram_index = palette_base + colour;
-					snes_colour = cgram.data[cgram_index];
-				}
-				
 				px.transparent = (colour == 0);
 				px.colour = snes_colour;
 			
-				push_pixel(bg, px, dot, native_hires);
+				push_pixel(bg, px, dot);
 
 				sub_px++;
 			}
@@ -417,13 +341,15 @@ void PPU::render_bg_scanline(BG& bg) {
 void PPU::fetch_objects() {
 
 	object_buffer.clear();
+	range_over = false;
+
 	int first_object = 0;
 
 	if (oam.priority_rotation) {
 		first_object = (oam.reload >> 1) & 0x7F;
 	}
 
-	for (int n = 0; n < 128; n++) {
+	for (int n = 0; n < 128 && object_buffer.size() < MAX_OBJECTS; n++) {
 		int i = (first_object + n) & 0x7F;
 		Word x_coordinate = oam.data[(4 * i) + 0];
 		Word y_coordinate = oam.data[(4 * i) + 1];
@@ -471,20 +397,12 @@ void PPU::fetch_objects() {
 
 		int line_in_sprite = (vcounter - y_coordinate) & 0xFF;
 
-		bool x_in_range = (signed_x > -width) && (signed_x < 256);
-
-		if (line_in_sprite < height && x_in_range) {
-
-			if (object_buffer.size() >= MAX_OBJECTS) {
-				if (!range_over) {
-					//std::cout << "[DIAG] range_over SET at vcounter=" << std::dec << vcounter
-					          //<< " (sprite index " << i << ")\n";
-				}
-				range_over = true;
-				continue;
-			}
-
+		if (line_in_sprite < height) {
 			Object obj;
+
+			/*std::cout << "Object index" << (int)(i) << " ";
+			std::cout << "X-POS: " << (int)(signed_x) << " ";
+			std::cout << "Y-POS: " << (int)(y_coordinate) << "\n";*/
 
 			obj.x_coordinate = signed_x;
 			obj.y_coordinate = y_coordinate;
@@ -499,25 +417,12 @@ void PPU::fetch_objects() {
 			obj.render_width = render_width;
 			obj.render_height = render_height;
 			obj.line_in_sprite = line_in_sprite;
+			if (object_buffer.size() >= MAX_OBJECTS) {
+				range_over = true;
+				break;
+			}
 			object_buffer.push_back(obj);
 		} 
-	}
-
-	int tiles_fetched = 0;
-	for (auto it = object_buffer.rbegin(); it != object_buffer.rend(); ++it) {
-		Object& o = *it;
-		if (o.x_coordinate <= -8 || o.x_coordinate >= 256) {
-			continue;
-		}
-		int tiles_this_sprite = o.width / 8;
-		tiles_fetched += tiles_this_sprite;
-		if (tiles_fetched > 34) {
-			if (!time_over) {
-				/*std::cout << "[DIAG] time_over SET at vcounter=" << std::dec << vcounter << "\n";*/
-			}
-			time_over = true;
-			break;
-		}
 	}
 
 }
@@ -532,8 +437,10 @@ void PPU::render_obj_scanline(ObjectLayer& obj) {
 	std::array<Pixel, 512>& scanline = obj.scanline;
 	scanline.fill(transparent_pixel);
 
+	fetch_objects();
+
 	for (auto& o : object_buffer) {
-		int x = o.x_coordinate * 2;
+		int x = hires_mode ? o.x_coordinate : (o.x_coordinate * 2);
 
 		int sprite_y = o.line_in_sprite;
 
@@ -623,7 +530,6 @@ void PPU::render_obj_scanline(ObjectLayer& obj) {
 }
 
 bool PPU::should_resolve(bool is_window, int value) {
-	// Used by sub screen
 	bool resolve = false;
 	switch (value) {
 	case 0: resolve = false; break;
@@ -678,9 +584,7 @@ inline int clamp(int value, int min, int max) {
 }
 
 Pixel PPU::colour_math(Pixel main, Pixel sub, bool ignore_half) {
-	
-	// POSSIBLY INCORRECT
-	if (!main.colour_math || (col.addend == 1 && sub.transparent)) {
+	if (!main.colour_math || sub.transparent) {
 		return main;
 	}
 
@@ -791,7 +695,7 @@ void PPU::clear_framebuffer(std::vector<uint32_t>& f) {
 }
 
 void PPU::add_to_framebuffer(std::vector<uint32_t>& f, std::array<Pixel, 512>& line) {
-	int idx1 = screen_width * (2 * vcounter);
+	int idx1 = screen_width * (2 * (vcounter - 1));
 
 	for (int i = 0; i < screen_width; i++) {
 		f[idx1 + i] = convert_to_rgba(line[i].colour);
@@ -832,8 +736,6 @@ uint32_t PPU::convert_to_rgba(uint16_t colour) {
 }
 
 void PPU::render_scanline() {
-	fetch_objects();
-
 	bool any_window_used =
 		bg1.windows_on_subscreen || bg1.windows_on_main_screen ||
 		bg2.windows_on_subscreen || bg2.windows_on_main_screen ||
@@ -843,9 +745,9 @@ void PPU::render_scanline() {
 
 	if (any_window_used) {
 		for (int x = 0; x < 512; x ++) {
-			int screen_x = hires_mode ? x : (x / 2);
-			window1_dots[x] = (screen_x >= window1.left_position) && (screen_x <= window1.right_position);
-			window2_dots[x] = (screen_x >= window2.left_position) && (screen_x <= window2.right_position);
+			int even_x = x / 2;
+			window1_dots[x] = (even_x >= window1.left_position) && (even_x <= window1.right_position);
+			window2_dots[x] = (even_x >= window2.left_position) && (even_x <= window2.right_position);
 		}
 	}
 	if (bg1.main_screen || bg1.sub_screen) { render_bg_scanline(bg1); }
@@ -900,8 +802,8 @@ void PPU::render_scanline() {
 	std::array<Pixel, 512> final_scanline;
 	composite(final_scanline);
 	
-	int idx1 = screen_width * (2 * vcounter);
-	int idx2 = screen_width * ((2 * vcounter) + 1);
+	int idx1 = screen_width * (2 * (vcounter - 1));
+	int idx2 = screen_width * ((2 * (vcounter - 1)) + 1);
 	
 	if (forced_blank) {
 		for (int i = 0; i < screen_width; i++) {
@@ -954,6 +856,10 @@ void PPU::enter_hblank() {
 	if (cpu) {
 		cpu->set_hvbjoy_flag(0b1 << 6, true);
 	}
+
+	if (!vblank && dma) {
+		dma->hdma_transfer();
+	}
 }
 
 void PPU::leave_hblank() {
@@ -981,12 +887,11 @@ void PPU::leave_vblank() {
 	hvbjoy = hvbjoy & ~(0b1 << 7);
 	if (cpu) {
 		cpu->set_hvbjoy_flag(0b1 << 7, false);
-		//cpu->signal_nmi_end();
+		cpu->signal_nmi_end();
 	}
 
-	if (!forced_blank) {
-		range_over = false;
-		time_over = false;
+	if (dma) {
+		dma->hdma_init();
 	}
 }
 
@@ -1017,19 +922,15 @@ void PPU::update_vblank() {
 }
 
 void PPU::end_scanline() {
-
 	vcounter += 1;
-
+	int visible_lines = overscan_mode ? overscan_vcount : no_overscan_vcount;
+	if (vcounter >= 1 && vcounter <= visible_lines) {
+		render_scanline();
+	}
 	update_vblank();
 
 	if (frame_ended()) {
 		next_frame();
-		return;
-	}
-
-	int visible_lines = overscan_mode ? overscan_vcount : no_overscan_vcount;
-	if (vcounter < visible_lines) {
-		render_scanline();
 	}
 }
 
@@ -1043,30 +944,12 @@ void PPU::tick_component() {
 		end_scanline();
 	}
 
-	if (hcounter == CPU_PAUSE) {
-		bus->wram_refresh_pause();
-	}
-
-	if (hcounter == HDMA_INIT_DOT && vcounter == 0) {
-		if (hdma_transfer_lines != 0) {
-			//std::cout << "Did HDMA on " << (int)(hdma_transfer_lines) << " lines.\n";
-		}
-		dma->hdma_init();
-		hdma_transfer_lines = 0;
-	}
-
-	bool is_hdma_transfer_line = vcounter < vblank_start;
-	if (hcounter == HDMA_TRANSFER_DOT && is_hdma_transfer_line) {
-		dma->hdma_transfer();
-		hdma_transfer_lines++;
-	}
-
 	update_hblank();
 
 	bool condition_now =
-	    (irq_mode == 1 && hcounter == 4 + h_time_target) ||
-	    (irq_mode == 2 && vcounter == v_time_target && hcounter == 3) ||
-	    (irq_mode == 3 && vcounter == v_time_target && hcounter == 4 + h_time_target);
+	    (irq_mode == 1 && hcounter == h_time_target) ||
+	    (irq_mode == 2 && vcounter == v_time_target && hcounter == 0) ||
+	    (irq_mode == 3 && vcounter == v_time_target && hcounter == h_time_target);
 
 	if (condition_now && !irq_condition_met) {
 	    call_irq();
@@ -1075,6 +958,10 @@ void PPU::tick_component() {
 
 	cycle += 4;
 };
+
+/*void PPU::connect_dma(DMA* dma) {
+	this->dma= dma;
+}*/
 
 // Moved here to avoid circular dependency
 
@@ -1134,7 +1021,9 @@ Byte PPU::communication_read(SNESAddress addr) {
 	// H/V Counters
 
 	if (addr.offset == SLHV_ADDRESS) {
-		latch_hv_counters();
+		counter_latch = true;
+		ophct = hcounter / 4;
+		opvct = vcounter;
 	}
 	if (addr.offset == OPHCT_ADDRESS) {
 		if (ophct_byte == 0) {
@@ -1156,9 +1045,6 @@ Byte PPU::communication_read(SNESAddress addr) {
 	// Status
 	if (addr.offset == STAT77_ADDRESS) {
 	    fetched = (time_over << 7) | (range_over << 6) | (master_slave_mode << 5) | (ppu1_version & 0xFF);
-	    /*std::cout << "[DIAG] STAT77 read at vcounter=" << std::dec << vcounter
-	              << " value=0x" << std::hex << (int)fetched
-	              << " (time_over=" << time_over << " range_over=" << range_over << ")\n" << std::dec;*/
 	}
 	if (addr.offset == STAT78_ADDRESS) {
 	    fetched = (field << 7) | (counter_latch << 5) | (region << 4) | (ppu2_version & 0xFF);
