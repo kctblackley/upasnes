@@ -111,21 +111,6 @@ public:
 	}
 
 	Byte read(SNESAddress address) override {
-		if (hardware.coprocessor == Coprocessor::SuperFX && superfx.snes_handles(address)) {
-			/*if (superfx.is_open_bus(address)) {
-				return get_open_bus();
-			}*/
-	 		return superfx.snes_read(address);
-		}
-		if (hardware.coprocessor == Coprocessor::SuperFX) {
-			Byte override_value;
-			if (superfx.vector_override(address, override_value)) {
-				return override_value;
-			}
-			if (!superfx.allow_mapper(address)) {
-				return get_open_bus();
-			}
-		}
 		address_bus = address;
 		return std::visit(
 		    [&](auto& m)
@@ -137,24 +122,6 @@ public:
 	}
 
 	void write(SNESAddress address, Byte value) override {
-		if (hardware.coprocessor == Coprocessor::SuperFX) {
-			bool in_io_bank = (address.bank <= 0x3F) || (address.bank >= 0x80 && address.bank <= 0xBF);
-			if (in_io_bank && address.offset >= 0x3000 && address.offset <= 0x3FFF) {
-				std::cout << "[superfx-io-write] bank=" << byte_to_hex(address.bank)
-				          << " offset=" << word_to_hex(address.offset)
-				          << " value=" << byte_to_hex(value)
-				          << " snes_handles=" << (superfx.snes_handles(address) ? "true" : "false")
-				          << "\n";
-			}
-		}
-
-		if (hardware.coprocessor == Coprocessor::SuperFX && superfx.snes_handles(address)) {
-			superfx.snes_write(address, value);
-			return;
-		}
-		if (hardware.coprocessor == Coprocessor::SuperFX && !superfx.allow_mapper(address)) {
-			return;
-		}
 		address_bus = address;
 		std::visit(
 	        [&](auto& m)
