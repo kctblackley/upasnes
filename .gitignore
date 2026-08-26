@@ -7,3 +7,4 @@
 !/include/*.inl
 !/ipl/.gitkeep
 !/rom/.gitkeep
++!/src/superfx.cpp
