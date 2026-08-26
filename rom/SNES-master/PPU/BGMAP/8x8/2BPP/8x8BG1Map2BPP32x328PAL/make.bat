@@ -1,1 +1,0 @@
-bass 8x8BG1Map2BPP32x328PAL.asm

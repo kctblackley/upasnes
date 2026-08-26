@@ -1,1 +1,0 @@
-bass GSUASR.asm

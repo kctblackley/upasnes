@@ -1,1 +1,0 @@
-bass GSU2BPP256x192FillPoly.asm

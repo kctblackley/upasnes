@@ -1,1 +1,0 @@
-bass GSUXOR.asm

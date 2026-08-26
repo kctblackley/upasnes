@@ -1,1 +1,0 @@
-bass HiColor3840.asm

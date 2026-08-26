@@ -1,2 +1,0 @@
-bass VIDEO15FPS16Col8Pal_spc.asm
-bass VIDEO15FPS16Col8Pal.asm

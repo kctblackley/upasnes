@@ -1,1 +1,0 @@
-bass 8x8BGMap8BPP32x32.asm

@@ -1,2 +1,0 @@
-bass Touhou-BadApple!30FPS4ColInterlace_spc.asm
-bass Touhou-BadApple!30FPS4ColInterlace.asm

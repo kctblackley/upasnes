@@ -1,1 +1,0 @@
-bass GSUNOT.asm

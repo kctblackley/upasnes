@@ -1,1 +1,0 @@
-bass 8x8BGMap8BPP64x64.asm
