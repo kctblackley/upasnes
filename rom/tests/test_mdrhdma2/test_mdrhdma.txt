@@ -1,0 +1,26 @@
+008125 lda $2100     [002100] A:2121 X:000c Y:0000 S:01ff D:0000 DB:00 nvmxdIZC V:  0 H:1096
+  1096 = opcode fetch
+  1104 = $00 fetch
+  1112 = $21 fetch            [MDR = $21]
+    clockCount = speed(addr)
+    dmaEdge()
+      hdmaRun()               [read = $ff]
+    addClocks(2)
+    MDR = read(addr)          [read = $21]
+    addClocks(4)
+    return MDR
+  1112 = HDMA->CPU sync
+  1120 = HDMA start
+  1128 = HDMA read            [MDR = $ff]
+  1144 = CPU->HDMA sync
+  1152 = HDMA end
+  1152 = true $21 fetch       [MDR = $21]
+  1160 = low read             [result = MDR]
+  1166 = high read            [result = MDR]
+008128 sta $700000,x [70000c] A:2121 X:000c Y:0000 S:01ff D:0000 DB:00 nvmxdIzC V:  0 H:1172
+00812c inx                    A:2121 X:000c Y:0000 S:01ff D:0000 DB:00 nvmxdIzC V:  0 H:1220
+00812d inx                    A:2121 X:000d Y:0000 S:01ff D:0000 DB:00 nvmxdIzC V:  0 H:1234
+00812e cmp #$2121             A:2121 X:000e Y:0000 S:01ff D:0000 DB:00 nvmxdIzC V:  0 H:1248
+008131 beq $8125     [008125] A:2121 X:000e Y:0000 S:01ff D:0000 DB:00 nvmxdIZC V:  0 H:1272
+008125 lda $2100     [002100] A:2121 X:000e Y:0000 S:01ff D:0000 DB:00 nvmxdIZC V:  0 H:1294
+008128 sta $700000,x [70000e] A:2121 X:000e Y:0000 S:01ff D:0000 DB:00 nvmxdIzC V:  0 H:1330
