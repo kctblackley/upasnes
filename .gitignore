@@ -1,4 +1,6 @@
 *
+!/src/
+!/include/
 !/src/*.cpp
 !/include/*.cpp
 !/src/*.hpp
@@ -7,4 +9,3 @@
 !/include/*.inl
 !/ipl/.gitkeep
 !/rom/.gitkeep
-+!/src/superfx.cpp
