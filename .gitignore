@@ -9,5 +9,4 @@
 !include/**/*.inl
 !ipl/
 !ipl/.gitkeep
-!rom/
 !rom/.gitkeep
