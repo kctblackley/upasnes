@@ -1,3 +1,5 @@
+// These implementations for the SuperFX were HEAVILY reliant on bsnes
+
 #include "superfx.hpp"
 #include "cartridge.hpp"
 #include "ricoh_5a22.hpp"

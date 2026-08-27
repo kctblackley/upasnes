@@ -24,7 +24,7 @@ void Mapper<MapperT>::load_sram(Byte ram_size, CartridgeHardware* hardware, Cart
 	}
 	sram.assign(sram_size, 0);
 
-	if constexpr (true) { // Just a temporary thing for testing Earthbound, which is experiencing some issues at the moment
+	if constexpr (false) { // Just a temporary thing for testing Earthbound, which is experiencing some issues at the moment
 		std::ifstream file("saves/earthbound/earthbound.srm", std::ios::binary);
 
 		file.seekg(0, std::ios::end);
