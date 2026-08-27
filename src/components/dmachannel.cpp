@@ -41,7 +41,7 @@ bool DMAChannel::load_descriptor() {
 	if (repeat) { 
 
 		int unit_size = transfer_units[transfer_unit_select].size;
-
+		
 		for (int i = 0; i < lines_to_transfer; i++) {
 			Address src = (src_bank << 16) | src_address;
 

@@ -172,7 +172,7 @@ void DMA::tick_gpdma() {
 						gpdma.state = GPDMAState::End;
 					}
 				} else {
-					gpdma.cycle = 8;
+					gpdma.cycle = 0;
 					gpdma.state = GPDMAState::TransferByte;
 				}
 				break;

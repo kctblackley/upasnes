@@ -22,14 +22,6 @@ enum class WaitingState {
 	RAN
 };
 
-struct PixelCache {
-	Byte data[8] = {0};
-	bool flags[8] = {false};
-	bool has_data = false;
-	Byte x = 0;
-	Byte y = 0;
-};
-
 struct ALUResult {
 	Word value;
 	bool carry;
@@ -37,6 +29,13 @@ struct ALUResult {
 
 class Ricoh5A22;
 class Cartridge;
+class SNES;
+
+struct PixelCache {
+	Word offset;
+	Byte bitpend;
+	Byte data[8];
+};
 
 // Inspired by bsnes, easy handling for registers for flags
 
@@ -88,7 +87,100 @@ public:
 		reset_registers();
 	}
 
+	// Still to do
+	void reset_rom() {
+		return;
+	}
+
+	void reset_ram() {
+		return;
+	}
+
+	Byte read_rom(unsigned int address);
+	void write_rom(unsigned int address, Byte data);
+	Byte read_ram(unsigned int address);
+	void write_ram(unsigned int address, Byte data);
+
+	Byte read_io(unsigned int address);
+	void write_io(unsigned int address, Byte data);
+
+	size_t get_rom_size();
+
+	size_t get_ram_size() {
+		return gpram_size;
+	}
+
+	// Main
+
+	void synchronise_cpu();
 	void tick_component();
+	void unload();
+	void power();
+
+	void stop();
+	Byte colour(Byte source);
+	void plot(Byte x, Byte y);
+	Byte rpix(Byte x, Byte y);
+	void flush_pixel_cache(PixelCache& cache);
+
+	// Memory map
+
+	Byte read(Address address);
+	void write(Address address, Byte data);
+
+	Byte read_opcode(Word address);
+	Byte peekpipe();
+	Byte pipe();
+
+	void flush_cache();
+	Byte read_cache(Word address);
+	void write_cache(Word address, Byte data);
+
+	// Instructions
+
+	void i_stop();
+	void i_nop();
+	void i_cache();
+	void i_lsr();
+	void i_rol();
+	void i_branch(bool condition);
+	void i_to_move(unsigned int n);
+	void i_with(unsigned int n);
+	void i_store(unsigned int n);
+	void i_loop();
+	void i_alt1();
+	void i_alt2();
+	void i_alt3();
+	void i_load(unsigned int n);
+	void i_plot_rpix();
+	void i_swap();
+	void i_colour_cmode();
+	void i_not();
+	void i_add_adc(unsigned int n);
+	void i_sub_sbc_cmp(unsigned int n);
+
+	void i_merge();
+	void i_and_bic(unsigned int n);
+	void i_mult_umult(unsigned int n);
+	void i_sbk();
+	void i_link(unsigned int n);
+	void i_sex();
+	void i_asr_div2();
+	void i_ror();
+	void i_jmp_ljmp(unsigned int n);
+	void i_lob();
+	void i_fmult_lmult();
+	void i_ibt_lms_sms(unsigned int n);
+	void i_from_moves(unsigned int n);
+	void i_hib();
+	void i_or_xor(unsigned int n);
+	void i_inc(unsigned int n);
+	void i_getc_ramb_romb();
+	void i_dec(unsigned int n);
+	void i_getb();
+	void i_iwt_lm_sm(unsigned int n);
+
+	void instruction(Byte opcode);
 
 	void build_game_pak_ram(int checksum) {
 		if (checksum == 0xAB12 || checksum == 0x4DBF || checksum == 0x132C) {
@@ -127,6 +219,24 @@ public:
 	CycleCount get_coprocessor_cycle() {
 		return cycle;
 	}
+
+	void connect_snes(SNES* snes) {
+		this->snes = snes;
+	}
+
+	void step(int clocks);
+	void sync_rom_buffer();
+	Byte read_rom_buffer();
+	void update_rom_buffer();
+	void sync_ram_buffer();
+	Byte read_ram_buffer(Word address);
+	void write_ram_buffer(Word address, Byte data);
+
+	// SNES-side memory map
+	bool handles(SNESAddress address);
+
+	Byte snes_side_read(SNESAddress address);
+	void snes_side_write(SNESAddress address, Byte data);
 
 private:
 	CycleCount cycle = 0;
@@ -167,7 +277,10 @@ private:
 		auto operator--() { return assign(data - 1); }
 		auto operator=(Word i) { return assign(i); }
 		auto operator=(const Register& value) { return assign(value); }
-
+		auto operator++(int) { auto old = data; assign(data + 1); return old; }
+		auto operator--(int) { auto old = data; assign(data - 1); return old; }
+		auto operator+=(Word v) { return assign(data + v); }
+		
 		Register() = default;
 		Register(const Register&) = delete;
 	} r[16];
@@ -312,9 +425,10 @@ private:
 
 	// Pixel Cache
 
-	struct PixelCache {
-		Word offset;
-		Byte bitpend;
-		Byte data[8];
-	} pixel_cache[2];
+	PixelCache pixel_cache[2];
+
+	SNES* snes = nullptr;
+
+	int romcl, ramcl;
+	unsigned int rom_mask, ram_mask;
 };

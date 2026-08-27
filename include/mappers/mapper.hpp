@@ -38,6 +38,14 @@ public:
 
 	Byte get_open_bus();
 
+	size_t get_rom_size() {
+		return rom.size();
+	}
+
+	Byte get_from_rom(unsigned int index) {
+		return rom[index % rom.size()];
+	}
+	
 protected:
 
 	void log_info() {

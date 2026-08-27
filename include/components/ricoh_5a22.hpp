@@ -248,6 +248,10 @@ public:
 		irq_line = true;
 	}
 
+	void unsignal_irq() {
+		irq_line = false;
+	}
+
 	void set_hvbjoy_flag(Byte bit_mask, bool set) {
 		if (set) {
 			mregs.HVBJOY = mregs.HVBJOY | bit_mask;

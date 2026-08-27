@@ -12,6 +12,7 @@ class Ricoh5A22;
 class PPU;
 class Component;
 class DMA;
+class SNES;
 
 class Bus {
 public:
@@ -66,6 +67,10 @@ public:
 
 	void set_fastrom(bool fastrom_enabled) {
 		cartridge->set_fastrom(fastrom_enabled);
+	}
+
+	void connect_snes(SNES* snes) {
+		cartridge->connect_snes(snes);
 	}
 
 	void wram_refresh_pause();

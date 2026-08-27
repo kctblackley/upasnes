@@ -143,6 +143,9 @@ CycleCount Bus::component_penalty(SNESAddress address) {
 	if (address.offset >= CPU_PORTS_SECTION && address.offset < CPU_PORTS_NON_PENALTY_SECTION) {
 		return CPU_PORTS_PENALTY;
 	}
+	if (address.offset >= CPU_PORTS_NON_PENALTY_SECTION && address.offset < CPU_DMA_PORTS_ENDING) {
+		return 0;
+	}
 	return WRAM_PENALTY;
 }
 

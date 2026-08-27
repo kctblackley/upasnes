@@ -36,6 +36,8 @@ SNES::SNES() : master_cycle(0) {
 	bus->set_wait_callback([this](CycleCount cycles) {
 		ricoh_5a22->add_cycles(cycles);
 	});
+
+	bus->connect_snes(this);
 }
 
 void SNES::load_cartridge(const std::string& directory) {
@@ -63,6 +65,27 @@ void SNES::tick_snes() {
 
 	if (bus->has_coprocessor()) {
 		master_cycle = std::min({master_cycle, bus->get_coprocessor_cycle()});
+	}
+}
+
+void SNES::sync_to_superfx() {
+	CycleCount coprocessor_cycle = bus->get_coprocessor_cycle();
+	while (master_cycle <= coprocessor_cycle) {
+		CycleCount cpu_cycle = ricoh_5a22->get_cycle();
+		CycleCount ppu_cycle = ppu->get_cycle();
+		CycleCount spc_cycle = spc_700->get_cycle();
+		
+		coprocessor_cycle = bus->get_coprocessor_cycle();
+		
+		if (spc_cycle <= cpu_cycle && spc_cycle <= ppu_cycle) {
+			spc_700->tick_component();
+		} else if (cpu_cycle <= ppu_cycle) {
+			ricoh_5a22->tick_component();
+		} else {
+			ppu->tick_component();
+		}
+
+		master_cycle = std::min({ ricoh_5a22->get_cycle(), spc_700->get_cycle(), ppu->get_cycle() });
 	}
 }
 

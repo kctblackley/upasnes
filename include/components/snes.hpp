@@ -18,6 +18,7 @@ public:
 	void poll(); 
 	void tick_snes();
 	void run();
+	void sync_to_superfx();
 
 	void reset();
 	void initialise();

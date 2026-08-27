@@ -12,6 +12,7 @@
 #include "sdd1.hpp"
 
 class Ricoh5A22;
+class SNES;
 
 enum class MapperType {
 	LoROM,
@@ -111,6 +112,11 @@ public:
 	}
 
 	Byte read(SNESAddress address) override {
+		if (hardware.coprocessor == Coprocessor::SuperFX) {
+			if (superfx.handles(address)) {
+				return superfx.snes_side_read(address);
+			}
+		}
 		address_bus = address;
 		return std::visit(
 		    [&](auto& m)
@@ -122,6 +128,12 @@ public:
 	}
 
 	void write(SNESAddress address, Byte value) override {
+		if (hardware.coprocessor == Coprocessor::SuperFX) {
+			if (superfx.handles(address)) {
+				superfx.snes_side_write(address, value);
+				return;
+			}
+		}
 		address_bus = address;
 		std::visit(
 	        [&](auto& m)
@@ -383,6 +395,30 @@ public:
 			return superfx.get_coprocessor_cycle();
 		}
 		return 0;
+	}
+
+	void connect_snes(SNES* snes) {
+		superfx.connect_snes(snes);
+	}
+
+	size_t get_rom_size() {
+		return std::visit(
+		    [&](auto& m)
+		    {
+		        return m.get_rom_size();
+		    },
+		    mapper
+		);
+	}
+
+	Byte get_from_rom(unsigned int address) {
+		return std::visit(
+		    [&](auto& m)
+		    {
+		        return m.get_from_rom(address);
+		    },
+		    mapper
+		);
 	}
 
 private:
