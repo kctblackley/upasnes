@@ -96,9 +96,9 @@ public:
 		return;
 	}
 
-	Byte read_rom(unsigned int address);
+	Byte read_rom(unsigned int address, bool snes_accessing = false);
 	void write_rom(unsigned int address, Byte data);
-	Byte read_ram(unsigned int address);
+	Byte read_ram(unsigned int address, bool snes_accessing = false);
 	void write_ram(unsigned int address, Byte data);
 
 	Byte read_io(unsigned int address);
@@ -214,10 +214,11 @@ public:
 
 	void connect_cartridge(Cartridge* cartridge) {
 		this->cartridge = cartridge;
+		power();
 	}
 
 	CycleCount get_coprocessor_cycle() {
-		return cycle;
+		return (int64_t)cycle;
 	}
 
 	void connect_snes(SNES* snes) {

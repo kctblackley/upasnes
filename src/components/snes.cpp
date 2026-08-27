@@ -70,7 +70,7 @@ void SNES::tick_snes() {
 
 void SNES::sync_to_superfx() {
 	CycleCount coprocessor_cycle = bus->get_coprocessor_cycle();
-	while (master_cycle <= coprocessor_cycle) {
+	while (master_cycle < coprocessor_cycle) {
 		CycleCount cpu_cycle = ricoh_5a22->get_cycle();
 		CycleCount ppu_cycle = ppu->get_cycle();
 		CycleCount spc_cycle = spc_700->get_cycle();

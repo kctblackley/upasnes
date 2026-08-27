@@ -28,7 +28,6 @@ void SuperFX::tick_component() {
       step(6);
       return;
    }
-
    instruction(peekpipe());
 
    if (r[14].modified) {
@@ -155,7 +154,7 @@ void SuperFX::i_loop() {
 
 void SuperFX::i_alt1() {
    sfr.b = 0;
-   sfr.alt1 = 0;
+   sfr.alt1 = 1;
 }
 
 void SuperFX::i_alt2() {
@@ -235,7 +234,7 @@ void SuperFX::i_sub_sbc_cmp(unsigned int n) {
    sfr.s  = (r & 0x8000);
    sfr.cy = (r >= 0);
    sfr.z  = ((Word)r == 0);
-   if (!sfr.alt2 || sfr.alt1) {
+   if (!sfr.alt2 || !sfr.alt1) {
       dr() = r;
    }
    reset_registers();
@@ -268,7 +267,7 @@ void SuperFX::i_mult_umult(unsigned int n) {
    sfr.s = (dr() & 0x8000);
    sfr.z = (dr() == 0);
    reset_registers();
-   if (cfgr.ms0) {
+   if (!cfgr.ms0) {
       step(clsr ? 1 : 2);
    }
 }
@@ -750,7 +749,7 @@ Byte SuperFX::rpix(Byte x, Byte y) {
    int bpp = 2 << (scmr.md - (scmr.md >> 1));
    int address = 0x700000 + (cn * (bpp << 3)) + (scbr << 10) + ((y & 0x07) * 2);
    Byte data = 0x00;
-   x = (x & 7) & 7;
+   x = (x & 7) ^ 7;
 
    for (int n = 0; n < bpp; n++) {
       int byte = ((n >> 1) << 4) + (n & 1);
@@ -864,8 +863,8 @@ size_t SuperFX::get_rom_size() {
    return cartridge->get_rom_size();
 }
 
-Byte SuperFX::read_rom(unsigned int address) {
-   if (sfr.g && scmr.ron) {
+Byte SuperFX::read_rom(unsigned int address, bool snes_accessing) {
+   if (sfr.g && scmr.ron && snes_accessing) {
       const Byte vector[16] = {
          0x00, 0x01, 0x00, 0x01, 0x04, 0x01, 0x00, 0x01,
          0x00, 0x01, 0x08, 0x01, 0x00, 0x01, 0x0c, 0x01
@@ -879,8 +878,8 @@ void SuperFX::write_rom(unsigned int address, Byte data) {
    return;
 }
 
-Byte SuperFX::read_ram(unsigned int address) {
-   if (sfr.g && scmr.ran) {
+Byte SuperFX::read_ram(unsigned int address, bool snes_accessing) {
+   if (sfr.g && scmr.ran && snes_accessing) {
       return get_open_bus();
    }
    return gpram[address & ram_mask];
@@ -894,7 +893,7 @@ Byte SuperFX::read_io(unsigned int address) {
    address = 0x3000 | address & 0x3FF;
 
    if (address >= 0x3100 && address <= 0x32FF) {
-      read_cache(address - 0x3100);
+      return read_cache(address - 0x3100);
    }
    if (address >= 0x3000 && address <= 0x301F) {
       return r[(address >> 1) & 15] >> ((address & 1) << 3);
@@ -1026,7 +1025,7 @@ bool SuperFX::handles(SNESAddress address) {
       return gsu_io || mirror || gpram_area;
    }
 
-   if (revision == SuperFXRevision::GSU2) {
+   if (revision == SuperFXRevision::GSU2 || revision == SuperFXRevision::GSU2SP1) {
       bool gsu_io = ((address.bank >= 0x00 && address.bank <= 0x3F) || (address.bank >= 0x80 && address.bank <= 0xBF)) && address.offset >= 0x3000 && address.offset <= 0x34FF;
       bool mirror = ((address.bank >= 0x00 && address.bank <= 0x3F) || (address.bank >= 0x80 && address.bank <= 0xBF)) && address.offset >= 0x6000 && address.offset <= 0x7FFF;
       bool gpram_area = (address.bank >= 0x70 && address.bank <= 0x71);
@@ -1044,7 +1043,7 @@ Byte SuperFX::snes_side_read(SNESAddress address) {
          return read_io(address.offset);
       }
       if (gpram_area) {
-         return read_ram(address.offset);
+         return read_ram(address.offset, true);
       }
    }
    if (revision == SuperFXRevision::GSU1) {
@@ -1055,13 +1054,13 @@ Byte SuperFX::snes_side_read(SNESAddress address) {
          return read_io(address.offset);
       }
       if (mirror) {
-         return read_ram(address.offset - 0x6000);
+         return read_ram(address.offset - 0x6000, true);
       }
       if (gpram_area) {
-         return read_ram(address.offset);
+         return read_ram(address.offset, true);
       }
    }
-   if (revision == SuperFXRevision::GSU2) {
+   if (revision == SuperFXRevision::GSU2 || revision == SuperFXRevision::GSU2SP1) {
       bool gsu_io = ((address.bank >= 0x00 && address.bank <= 0x3F) || (address.bank >= 0x80 && address.bank <= 0xBF)) && address.offset >= 0x3000 && address.offset <= 0x34FF;
       bool mirror = ((address.bank >= 0x00 && address.bank <= 0x3F) || (address.bank >= 0x80 && address.bank <= 0xBF)) && address.offset >= 0x6000 && address.offset <= 0x7FFF;
       bool gpram_area = (address.bank >= 0x70 && address.bank <= 0x71);
@@ -1069,10 +1068,10 @@ Byte SuperFX::snes_side_read(SNESAddress address) {
          return read_io(address.offset);
       }
       if (mirror) {
-         return read_ram(address.offset - 0x6000);
+         return read_ram(address.offset - 0x6000, true);
       }
       if (gpram_area) {
-         return read_ram(address.offset);
+         return read_ram(address.offset, true);
       }
    }
    return get_open_bus();
@@ -1106,7 +1105,7 @@ void SuperFX::snes_side_write(SNESAddress address, Byte data) {
          return;
       }
    }
-   if (revision == SuperFXRevision::GSU2) {
+   if (revision == SuperFXRevision::GSU2 || revision == SuperFXRevision::GSU2SP1) {
       bool gsu_io = ((address.bank >= 0x00 && address.bank <= 0x3F) || (address.bank >= 0x80 && address.bank <= 0xBF)) && address.offset >= 0x3000 && address.offset <= 0x34FF;
       bool mirror = ((address.bank >= 0x00 && address.bank <= 0x3F) || (address.bank >= 0x80 && address.bank <= 0xBF)) && address.offset >= 0x6000 && address.offset <= 0x7FFF;
       bool gpram_area = (address.bank >= 0x70 && address.bank <= 0x71);
