@@ -206,7 +206,7 @@ public:
 		std::rotate(rom.begin(), rom.begin() + 0x400000, rom.end());
 	}
 
-	void load_cartridge(const std::string& directory, Ricoh5A22* cpu) {
+	void load_cartridge(const std::string& directory, Ricoh5A22* cpu, const std::string& game_name) {
 		std::vector<Byte> rom = load_rom(directory);
 
 		std::vector<MapperCandidate> candidates;
@@ -280,7 +280,7 @@ public:
 		    [&](auto& m)
 		    {
 		        m.load_rom(rom);
-		        m.load_sram(header.ram_size, &hardware, &header);
+		        m.load_sram(header.ram_size, game_name, &hardware, &header);
 		        m.connect_cpu(cpu);
 		        m.to_string();
 		    },

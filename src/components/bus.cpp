@@ -213,8 +213,8 @@ Byte Bus::read(Address addr, bool is_dma) {
 	return data_bus;
 }
 
-void Bus::load_cartridge(const std::string& directory, Ricoh5A22* ricoh) {
-	cartridge->load_cartridge(directory, ricoh);
+void Bus::load_cartridge(const std::string& directory, Ricoh5A22* ricoh, const std::string& game_name) {
+	cartridge->load_cartridge(directory, ricoh, game_name);
 }
 
 void Bus::enable_test_mode() {

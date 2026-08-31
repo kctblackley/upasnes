@@ -1,4 +1,6 @@
 // These implementations for the SuperFX were HEAVILY reliant on bsnes
+// This is a REFERENCE for a future personal rewrite based on my own improved understanding
+// This acts as proof that the SuperFX can function with my SNES core
 
 #include "superfx.hpp"
 #include "cartridge.hpp"
@@ -26,7 +28,9 @@ Byte SuperFX::get_open_bus() {
 }
 
 void SuperFX::tick_component() {
-	if (sfr.g == 0) {
+	CycleCount current_cycle = cycle;
+
+   if (sfr.g == 0) {
       step(6);
       return;
    }
@@ -670,7 +674,7 @@ void SuperFX::write_cache(Word address, Byte data) {
 }
 
 void SuperFX::stop() {
-   cpu->signal_irq();
+   cpu->signal_superfx_irq();
 }
 
 Byte SuperFX::colour(Byte source) {
@@ -908,7 +912,7 @@ Byte SuperFX::read_io(unsigned int address) {
       case 0x3031: {
          Byte rr = sfr >> 8;
          sfr.irq = 0;
-         cpu->unsignal_irq();
+         cpu->unsignal_superfx_irq();
          return rr;
       }
 
@@ -990,6 +994,12 @@ void SuperFX::write_io(unsigned int address, Byte data) {
          break;
       }
 
+      case 0x3036: {
+         rombr = data;
+         update_rom_buffer();
+         break;
+      }
+      
       case 0x3037 : {
          cfgr = data;
          break;

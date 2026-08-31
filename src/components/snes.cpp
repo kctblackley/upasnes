@@ -40,9 +40,9 @@ SNES::SNES() : master_cycle(0) {
 	bus->connect_snes(this);
 }
 
-void SNES::load_cartridge(const std::string& directory) {
+void SNES::load_cartridge(const std::string& directory, const std::string& game_name) {
 	std::cout << "LOADING CARTRIDGE!";
-	bus->load_cartridge(directory, ricoh_5a22);
+	bus->load_cartridge(directory, ricoh_5a22, game_name);
 	initialise();
 }
 

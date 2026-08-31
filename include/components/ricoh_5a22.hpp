@@ -14,8 +14,9 @@
 #define WRMPYB_ADDRESS 0x4203
 #define RDMPYL_ADDRESS 0x4216
 #define RDMPYH_ADDRESS 0x4217
-
 #define MULTIPLIER_HALF_CYCLES 16
+#define JOYSER0_ADDRESS 0x4016
+#define JOYSER1_ADDRESS 0x4017
 
 // Division addresses
 #define WRDIVL_ADDRESS 0x4204
@@ -78,6 +79,17 @@ struct CPURegisters {
 	Byte WRIO = 0xFF; // Programmable I/O port; bit 7 doubles as the PPU counter latch line
 };
 
+struct Port {
+	Word shift = 0xFFFF;
+	Byte bits_read = 16;
+};
+
+struct Serial {
+	bool strobe = false;
+	Port port1;
+	Port port2;
+};
+
 class Ricoh5A22 final : public CPU {
 public:
 	explicit Ricoh5A22(Bus* bus);
@@ -136,11 +148,32 @@ public:
 		}
 
 		// Miscellaneous
-		if (addr.offset == 0x4016) {
-			return 0x01;
+		if (addr.offset == JOYSER0_ADDRESS) {
+			Byte data1;
+			if (joyser.strobe) {
+				data1 = (get_controller_word(1) >> 15) & 1;
+			} else if (joyser.port1.bits_read < 16) {
+				data1 = (joyser.port1.shift >> (15 - joyser.port1.bits_read)) & 1;
+				joyser.port1.bits_read++;
+			} else {
+				data1 = 1;
+			}
+			Byte data2 = 1;
+			return (get_open_bus() & 0xFC) | (data2 << 1) | data1;
 		}
-
-
+		if (addr.offset == JOYSER1_ADDRESS) {
+			Byte data1;
+			if (joyser.strobe) {
+				data1 = (get_controller_word(2) >> 15 & 1);
+			} else if (joyser.port2.bits_read < 16) {
+				data1 = (joyser.port2.shift >> (15 - joyser.port2.bits_read)) & 1;
+				joyser.port2.bits_read++;
+			} else {
+				data1 = 1;
+			}
+			Byte data2 = 1;
+			return (get_open_bus() & 0xE0) | 0x1C | (data2 << 1) | data1;
+		}
 
 		return 0x00;
 	}
@@ -230,6 +263,19 @@ public:
 			mregs.VTIMEH = value;
 			ppu->v_time_target = (mregs.VTIMEH << 8) | mregs.VTIMEL;
 		}
+
+		if (addr.offset == JOYSER0_ADDRESS) {
+			bool new_strobe = value & 1;
+			if (new_strobe) {
+				joyser.port1.shift = get_controller_word(1);
+				joyser.port2.shift = get_controller_word(2);
+			}
+			if (joyser.strobe && !new_strobe) {
+				joyser.port1.bits_read = 0;
+				joyser.port2.bits_read = 0;
+			}
+			joyser.strobe = new_strobe;
+		}
 	}
 
 	void signal_nmi_start() {
@@ -248,7 +294,11 @@ public:
 		irq_line = true;
 	}
 
-	void unsignal_irq() {
+	void signal_superfx_irq() {
+		irq_line = true;
+	}
+
+	void unsignal_superfx_irq() {
 		irq_line = false;
 	}
 
@@ -355,6 +405,18 @@ public:
 
 	Byte get_open_bus();
 
+	Word get_controller_word(int port) {
+		if (!renderer) {
+			return 0xFFFF;
+		}
+		if (port == 1) {
+			return ((Word)(renderer->get_joypad(JOY1H_ADDRESS)) << 8) | renderer->get_joypad(JOY1L_ADDRESS);
+		}
+		if (port == 2) {
+			return ((Word)(renderer->get_joypad(JOY2H_ADDRESS)) << 8) | renderer->get_joypad(JOY2L_ADDRESS);
+		}
+		return 0x0000;
+	}
 private:
 
 	Bus* bus = nullptr;
@@ -392,4 +454,6 @@ private:
 
 	// Just because I am curious...
 	std::vector<Byte> emulation_mode_executed {}; // Seeing which emulation mode instructions actually get executed
+
+	Serial joyser;
 };

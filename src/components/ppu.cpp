@@ -199,6 +199,39 @@ void PPU::push_pixel(BG& bg, Pixel px, int& dot) {
 	}
 }
 
+Word PPU::get_tile(BG& bg, int x, int y) {
+	x = x & 0x3FF;
+	y = y & 0x3FF;
+
+	int tile_x = x >> 3;
+	int tile_y = y >> 3;
+
+	int map_width_tiles = bg.horizontal_tilemap_count ? 64 : 32;
+	int map_height_tiles = bg.vertical_tilemap_count ? 64 : 32;
+
+	tile_x = tile_x & (map_width_tiles - 1);
+	tile_y = tile_y & (map_height_tiles - 1);
+
+	int screen_x = tile_x >> 5;
+	int screen_y = tile_y >> 5;
+
+	int screen = 0;
+
+	if (bg.horizontal_tilemap_count) {
+		screen += screen_x;
+	}
+	if (bg.vertical_tilemap_count) {
+		screen += screen_y * (bg.horizontal_tilemap_count ? 2 : 1);
+	}
+
+	int local_x = tile_x & 31;
+	int local_y = tile_y & 31;
+
+	Word address = bg.tilemap_vram_address + (screen * 0x400) + (local_y * 32) + local_x;
+
+	return vram.data[address & 0x7FFF];
+}
+
 void PPU::render_bg_scanline(BG& bg) {
 	Pixel fetched_pixel;
 
@@ -212,44 +245,60 @@ void PPU::render_bg_scanline(BG& bg) {
 			fetched_pixel = fetch_mode7_pixel(bg, xcounter);
 			push_pixel(bg, fetched_pixel, dot);
 		} else {
-			int bg_x, bg_y;
-			int mosaic_x, mosaic_y;
-			
+			int hofs_x, hofs_y;
 			if (bg.mosaic) {
-				mosaic_x = xcounter - (xcounter % (mosaic_size + 1));
-				mosaic_y = vcounter - (vcounter % (mosaic_size + 1));
-
-				bg_x = (mosaic_x + bg.bghofs) & 0x3FF;
-				bg_y = (mosaic_y + bg.bgvofs) & 0x3FF;
+				hofs_x = xcounter - (xcounter % (mosaic_size + 1));
+				hofs_y = vcounter - (vcounter % (mosaic_size + 1));
 			} else {
-				bg_x = (xcounter + bg.bghofs) & 0x3FF;
-				bg_y = (vcounter + bg.bgvofs) & 0x3FF;
+				hofs_x = xcounter;
+				hofs_y = vcounter;
+			}
+			
+			int hofs = hofs_x + bg.bghofs;
+			int vofs = hofs_y + bg.bgvofs;
+
+			// Offset per tile...
+			Word valid_bit;
+			if (bg.layer == 1) {
+				valid_bit = 0x2000;
+			} else if (bg.layer == 2) {
+				valid_bit = 0x4000;
 			}
 
-			int tile_x = bg_x >> 3;
-			int tile_y = bg_y >> 3;
+			if (bg_mode == 2 || bg_mode == 4) {
+				int hval, vval;
 
+				if (bg_mode == 2) {
+					hval = get_tile(bg3, (hofs & 7) | (((xcounter - 8) & ~7) + (bg3.bghofs & ~7)), bg3.bgvofs);
+					vval = get_tile(bg3, (hofs & 7) | (((xcounter - 8) & ~7) + (bg3.bghofs & ~7)), bg3.bgvofs + 8);
+				} else {
+					int val = get_tile(bg3, (hofs & 7) | (((xcounter - 8) & ~7) + (bg3.bghofs & ~7)), bg3.bgvofs);
+					if (val & 0x8000) {
+						hval = 0;
+						vval = val;
+					} else {
+						hval = val;
+						vval = 0;
+					}
+				}
+
+				if (hval & valid_bit) {
+					hofs = (hofs & 7) | ((xcounter & ~7) + (hval & ~7));
+				}
+
+				if (vval & valid_bit) {
+					vofs = vcounter + vval;
+				}
+			}
+
+			vofs += 1;
+
+			int bg_x = hofs & 0x3FF;
+			int bg_y = vofs & 0x3FF;
 			int pixel_x = bg_x & 7;
 			int pixel_y = bg_y & 7;
 
-			int map_width_tiles  = bg.horizontal_tilemap_count ? 64 : 32;
-			int map_height_tiles = bg.vertical_tilemap_count   ? 64 : 32;
-
-			tile_x = tile_x & (map_width_tiles - 1);
-			tile_y = tile_y & (map_height_tiles - 1);
-
-			int screen_x = tile_x >> 5;
-			int screen_y = tile_y >> 5;
-			int screen = 0;
-
-			if (bg.horizontal_tilemap_count) { screen += screen_x; }
-			if (bg.vertical_tilemap_count)   { screen += screen_y * (bg.horizontal_tilemap_count ? 2 : 1); }
-
-			int local_x = tile_x & 31;
-			int local_y = tile_y & 31;
-
-			Word tilemap_address = (bg.tilemap_vram_address + (screen * 0x400) + (local_y * 32) + local_x) & 0x7FFF;
-			Word entry = vram.data[tilemap_address];
+			Word entry = get_tile(bg, hofs, vofs);
 
 			int tile_number = entry & 0x3FF;
 			bool hflip = entry & 0x4000;

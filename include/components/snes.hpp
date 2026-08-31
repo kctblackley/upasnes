@@ -14,7 +14,7 @@ public:
 
 	SNES();
 
-	void load_cartridge(const std::string& directory);
+	void load_cartridge(const std::string& directory, const std::string& game_name);
 	void poll(); 
 	void tick_snes();
 	void run();

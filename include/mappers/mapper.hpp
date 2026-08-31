@@ -12,6 +12,8 @@ struct CartridgeHeader;
 template<typename MapperT>
 class Mapper {
 public:
+	~Mapper();
+
 	Byte read(SNESAddress address);
 	void write(SNESAddress address, Byte value);
 
@@ -26,7 +28,7 @@ public:
 	    }
 	}
 
-	void load_sram(Byte ram_size, CartridgeHardware* hardware = nullptr, CartridgeHeader* header = nullptr);
+	void load_sram(Byte ram_size, const std::string& game_name, CartridgeHardware* hardware = nullptr, CartridgeHeader* header = nullptr);
 
 	void connect_cpu(Ricoh5A22* cpu) {
 		std::cout << "CARTRIDGE LOADED...\n";
@@ -45,7 +47,7 @@ public:
 	Byte get_from_rom(unsigned int index) {
 		return rom[index % rom.size()];
 	}
-	
+
 protected:
 
 	void log_info() {
@@ -55,6 +57,9 @@ protected:
 
 	std::vector<Byte> rom;
 	std::vector<Byte> sram;
+
+	std::string game_name;
+	bool save_exists;
 
 	Ricoh5A22* cpu = nullptr;
 

@@ -1,3 +1,9 @@
+// These implementations for the SuperFX were HEAVILY reliant on bsnes
+// This is a REFERENCE for a future personal rewrite based on my own improved understanding
+// This acts as proof that the SuperFX can function with my SNES core
+
+/*D*/ // This means 'documented'
+
 #pragma once
 #include "common.hpp"
 #include <iostream>
@@ -31,11 +37,13 @@ class Ricoh5A22;
 class Cartridge;
 class SNES;
 
+/*D*/
 struct PixelCache {
 	Word offset;
 	Byte bitpend;
 	Byte data[8];
 };
+/*D*/
 
 // Inspired by bsnes, easy handling for registers for flags
 
@@ -59,6 +67,7 @@ struct Bit {
 
 class SuperFX {
 public:
+	/*D*/
 	SuperFX() {
 		initialise();
 	}
@@ -86,6 +95,7 @@ public:
 		ramaddr = 0x0000;
 		reset_registers();
 	}
+	/*D*/
 
 	// Still to do
 	void reset_rom() {
@@ -96,6 +106,7 @@ public:
 		return;
 	}
 
+	/*D*/
 	Byte read_rom(unsigned int address, bool snes_accessing = false);
 	void write_rom(unsigned int address, Byte data);
 	Byte read_ram(unsigned int address, bool snes_accessing = false);
@@ -103,6 +114,7 @@ public:
 
 	Byte read_io(unsigned int address);
 	void write_io(unsigned int address, Byte data);
+	/*D*/
 
 	size_t get_rom_size();
 
@@ -182,6 +194,7 @@ public:
 
 	void instruction(Byte opcode);
 
+	/*D*/
 	void build_game_pak_ram(int checksum) {
 		if (checksum == 0xAB12 || checksum == 0x4DBF || checksum == 0x132C) {
 			gpram_size = SMALL_GAME_PAK_RAM_SIZE;
@@ -200,14 +213,18 @@ public:
 		if (this->revision == SuperFXRevision::MARIO) {
 			cycles_per_clock = 2;
 		}
+
+		cycles_per_clock = cycles_per_clock / overclock;
 	}
 
 	void set_mapper_type(bool hirom_mapper) {
 		this->hirom_mapper = hirom_mapper;
 	}
+	/*D*/
 
 	Byte get_open_bus();
 
+	/*D*/
 	void connect_cpu(Ricoh5A22* cpu) {
 		this->cpu = cpu;
 	}
@@ -216,14 +233,17 @@ public:
 		this->cartridge = cartridge;
 		power();
 	}
+	/*D*/
 
 	CycleCount get_coprocessor_cycle() {
 		return (int64_t)cycle;
 	}
 
+	/*D*/
 	void connect_snes(SNES* snes) {
 		this->snes = snes;
 	}
+	/*D*/
 
 	void step(int clocks);
 	void sync_rom_buffer();
@@ -240,8 +260,10 @@ public:
 	void snes_side_write(SNESAddress address, Byte data);
 
 private:
-	CycleCount cycle = 0;
-	CycleCount cycles_per_clock = 1;
+	double cycle = 0;
+	double cycles_per_clock = 1;
+
+	double overclock = 2; // Overclock speed multiplier
 
 	SuperFXRevision revision = SuperFXRevision::None;
 

@@ -1,5 +1,6 @@
 #include "mapper.hpp"
 #include "cartridge.hpp"
+#include <filesystem>
 
 constexpr int SUPERFX_SRAM_SIZE = 8192;
 
@@ -13,7 +14,9 @@ int superfx_sram_size(CartridgeHardware* hardware, CartridgeHeader* header) {
 }
 
 template <class MapperT>
-void Mapper<MapperT>::load_sram(Byte ram_size, CartridgeHardware* hardware, CartridgeHeader* header) {
+void Mapper<MapperT>::load_sram(Byte ram_size, const std::string& game_name, CartridgeHardware* hardware, CartridgeHeader* header) {
+	this->game_name = game_name;
+
 	size_t sram_size = 0;
 	if (ram_size != 0) {
 		sram_size = (1024u << ram_size);
@@ -22,53 +25,23 @@ void Mapper<MapperT>::load_sram(Byte ram_size, CartridgeHardware* hardware, Cart
 	if (hardware->superfx_revision != SuperFXRevision::None) {
 		sram_size = superfx_sram_size(hardware, header);
 	}
+
 	sram.assign(sram_size, 0);
 
-	if constexpr (false) { // Just a temporary thing for testing Earthbound, which is experiencing some issues at the moment
-		std::ifstream file("saves/earthbound/earthbound.srm", std::ios::binary);
+	if (sram_size > 0) {
+		std::string save_directory = std::filesystem::path("saves") / this->game_name / "save.sav";
+		std::filesystem::path save_path = save_directory;
 
-		file.seekg(0, std::ios::end);
-		std::size_t size = file.tellg();
-		file.seekg(0, std::ios::beg);
+		save_exists = std::filesystem::exists(save_path);
 
-		std::size_t read_size = std::min(size, sram.size());
-		if (size != sram.size()) {
-		    std::cout << "WARNING: earthbound.srm is " << size
-		              << " bytes, but cartridge SRAM is " << sram.size()
-		              << " bytes. Reading " << read_size << " bytes.\n";
+		if (save_exists) {
+			std::ifstream file(save_directory, std::ios::binary);
+			
+			file.read(
+				reinterpret_cast<char*>(sram.data()),
+				sram.size()
+			);
 		}
-		file.read(reinterpret_cast<char*>(sram.data()), read_size);
-	}
-
-	if constexpr (false) { // Just a temporary thing for testing Final Fantasy VI
-		std::ifstream file("saves/final_fantasy_vi/final_fantasy_vi.srm", std::ios::binary);
-
-		file.seekg(0, std::ios::end);
-		std::size_t size = file.tellg();
-		file.seekg(0, std::ios::beg);
-
-		std::size_t read_size = std::min(size, sram.size());
-		if (size != sram.size()) {
-		    std::cout << "WARNING: final_fantasy_vi.srm is " << size
-		              << " bytes, but cartridge SRAM is " << sram.size()
-		              << " bytes. Reading " << read_size << " bytes.\n";
-		}
-		file.read(reinterpret_cast<char*>(sram.data()), read_size);
-	}
-	if constexpr (false) { // Just a temporary thing for testing DKC
-		std::ifstream file("saves/donkey_kong_country/donkey_kong_country.srm", std::ios::binary);
-
-		file.seekg(0, std::ios::end);
-		std::size_t size = file.tellg();
-		file.seekg(0, std::ios::beg);
-
-		std::size_t read_size = std::min(size, sram.size());
-		if (size != sram.size()) {
-		    std::cout << "WARNING: donkey_kong_country.srm is " << size
-		              << " bytes, but cartridge SRAM is " << sram.size()
-		              << " bytes. Reading " << read_size << " bytes.\n";
-		}
-		file.read(reinterpret_cast<char*>(sram.data()), read_size);
 	}
 }
 
@@ -77,6 +50,33 @@ Byte Mapper<MapperT>::get_open_bus() {
 	return cpu->get_open_bus();
 }
 
+template <class MapperT>
+Mapper<MapperT>::~Mapper() {
+
+	// Save game method
+
+	if (sram.empty()) {
+		return;
+	}
+
+	std::filesystem::path save_path = std::filesystem::path("saves") / this->game_name / "save.sav";
+
+	std::filesystem::create_directories(save_path.parent_path());
+
+	std::ofstream file(
+		save_path,
+		std::ios::binary | std::ios::trunc
+	);
+
+	if (!file) {
+		return;
+	}
+
+	file.write(
+		reinterpret_cast<const char*>(sram.data()),
+		sram.size()
+	);
+}
 
 template class Mapper<LoROM>;
 template class Mapper<HiROM>;

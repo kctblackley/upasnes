@@ -171,6 +171,7 @@ void Voice::calculate_envelope() {
 		case EnvelopeState::RELEASE:
 			envelope -= 8;
 			if (envelope <= 0) {
+				envelope = 0;
 				active = false;
 			}
 			break;

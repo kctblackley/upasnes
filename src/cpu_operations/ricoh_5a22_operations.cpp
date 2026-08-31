@@ -2633,7 +2633,7 @@ namespace Ricoh5A22Functions {
 				cpu.regs.Y = cpu.regs.Y & 0x00FF;
 			}
 		} else {
-			cpu.regs.P = get_lo(cpu.BufferOperand);
+			cpu.regs.P = get_lo(cpu.BufferOperand) | 0x20;
 			cpu.set_flag_X();
 			cpu.set_flag_M();
 			cpu.regs.X = cpu.regs.X & 0x00FF;

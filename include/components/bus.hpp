@@ -50,7 +50,7 @@ public:
 	void write(Address addr, Byte value, bool is_dma = false);
 	Byte read(Address addr, bool is_dma = false);
 
-	void load_cartridge(const std::string& directory, Ricoh5A22* ricoh);
+	void load_cartridge(const std::string& directory, Ricoh5A22* ricoh, const std::string& game_name);
 
 	void enable_test_mode();
 	void disable_test_mode();

@@ -1125,6 +1125,8 @@ public:
 		hires_mode = pseudo_hires_mode || (bg_mode == 5) || (bg_mode == 6);
 	}
 
+	Word get_tile(BG& bg, int x, int y);
+
 	void push_pixel(BG& bg, Pixel px, int& dot);
 
 private:
