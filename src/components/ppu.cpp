@@ -43,7 +43,7 @@ void PPU::window_mask(std::array<Pixel, 512>& scanline, bool window1_enabled, bo
 // Note: tile caching cannot apply here
 Pixel PPU::fetch_mode7_pixel(BG& bg, uint16_t xcounter) {
 	int screen_x = xcounter;
-	int screen_y = vcounter;
+	int screen_y = vcounter - 1;
 
 	int rel_x = screen_x + mode7.m7hofs - mode7.m7x;
 	int rel_y = screen_y + mode7.m7vofs - mode7.m7y;
@@ -291,8 +291,8 @@ void PPU::render_bg_scanline(BG& bg) {
 				}
 			}
 
-			vofs += 1;
-
+			vofs = vofs + 1;
+			
 			int bg_x = hofs & 0x3FF;
 			int bg_y = vofs & 0x3FF;
 			int pixel_x = bg_x & 7;
@@ -744,7 +744,7 @@ void PPU::clear_framebuffer(std::vector<uint32_t>& f) {
 }
 
 void PPU::add_to_framebuffer(std::vector<uint32_t>& f, std::array<Pixel, 512>& line) {
-	int idx1 = screen_width * (2 * (vcounter - 1));
+	int idx1 = screen_width * (2 * vcounter);
 
 	for (int i = 0; i < screen_width; i++) {
 		f[idx1 + i] = convert_to_rgba(line[i].colour);
@@ -851,8 +851,8 @@ void PPU::render_scanline() {
 	std::array<Pixel, 512> final_scanline;
 	composite(final_scanline);
 	
-	int idx1 = screen_width * (2 * (vcounter - 1));
-	int idx2 = screen_width * ((2 * (vcounter - 1)) + 1);
+	int idx1 = screen_width * (2 * vcounter);
+	int idx2 = screen_width * ((2 * vcounter) + 1);
 	
 	if (forced_blank) {
 		for (int i = 0; i < screen_width; i++) {
@@ -971,11 +971,11 @@ void PPU::update_vblank() {
 }
 
 void PPU::end_scanline() {
-	vcounter += 1;
 	int visible_lines = overscan_mode ? overscan_vcount : no_overscan_vcount;
-	if (vcounter >= 1 && vcounter <= visible_lines) {
+	if (vcounter >= 0 && vcounter < visible_lines) {
 		render_scanline();
 	}
+	vcounter += 1;
 	update_vblank();
 
 	if (frame_ended()) {
