@@ -76,7 +76,7 @@ struct CPURegisters {
 	Byte HTIMEL, HTIMEH;
 	Byte VTIMEL, VTIMEH;
 	Byte RDNMI, TIMEUP;
-	Byte WRIO = 0xFF; // Programmable I/O port; bit 7 doubles as the PPU counter latch line
+	Byte WRIO = 0xFF;
 };
 
 struct Port {
@@ -136,6 +136,11 @@ public:
 
 		if (addr.offset == HVBJOY_ADDRESS) {
 			//std::cout << "READING HVBJOY AS " << std::hex << mregs.HVBJOY << "\n" ;
+			if (ppu->get_auto_joypad_busy()) {
+				mregs.HVBJOY = mregs.HVBJOY | 1;
+			} else {
+				mregs.HVBJOY = mregs.HVBJOY & ~1;
+			}
 			return mregs.HVBJOY;
 		}
 		
@@ -237,7 +242,11 @@ public:
 			Byte irq_bits_before = mregs.NMITIMEN & 0x30;
 			nmi_enabled = (((value >> 7) & 0b1) == 1);
 			auto_read_enabled = ((value & 0b1) == 1);
-
+			if (auto_read_enabled) {
+				ppu->enable_auto_joypad_read();
+			} else {
+				ppu->disable_auto_joypad_read();
+			}
 			this->irq_mode = (value >> 4) & 3;
 			ppu->irq_mode = this->irq_mode;
 			mregs.NMITIMEN = value;

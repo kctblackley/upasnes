@@ -263,7 +263,7 @@ private:
 	double cycle = 0;
 	double cycles_per_clock = 1;
 
-	double overclock = 2; // Overclock speed multiplier
+	double overclock = 5; // Overclock speed multiplier
 
 	SuperFXRevision revision = SuperFXRevision::None;
 

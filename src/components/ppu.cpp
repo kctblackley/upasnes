@@ -80,6 +80,7 @@ Pixel PPU::fetch_mode7_pixel(BG& bg, uint16_t xcounter) {
 	Pixel px;
 	px.transparent = (colour == 0);
 	px.colour = snes_colour;
+	px.colour_math = bg.enable_colour_math;
 	
 	if (bg.layer == 1) {
 		px.layer = 1;
@@ -548,7 +549,7 @@ void PPU::render_obj_scanline(ObjectLayer& obj) {
 
 			px.priority = o.priority;
 			px.colour = snes_colour;
-
+			px.layer = obj.layer;
 			px.colour_math =  obj.enable_colour_math && (o.palette >= 4);
 
 			// Sprites are not affected by hires mode
@@ -1071,7 +1072,7 @@ Byte PPU::communication_read(SNESAddress addr) {
 
 	if (addr.offset == SLHV_ADDRESS) {
 		counter_latch = true;
-		ophct = hcounter / 4;
+		ophct = hcounter;
 		opvct = vcounter;
 	}
 	if (addr.offset == OPHCT_ADDRESS) {

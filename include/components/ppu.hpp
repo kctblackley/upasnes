@@ -82,12 +82,29 @@ public:
 
 	void initialise_obj(ObjectLayer& obj) {
 		obj.framebuffer.assign(screen_width * framebuffer_height, 0x000000FF);
-		obj.layer = 0;
+		obj.layer = 5;
 	}
 
 	void add_cycles(CycleCount cycles) override {
 		this->cycle += cycles;
 	};
+
+	void enable_auto_joypad_read() {
+		auto_read_enabled = true;
+	}
+
+	void disable_auto_joypad_read() {
+		auto_read_enabled = false;
+	}
+
+	bool get_auto_joypad_busy() {
+		bool reading_joypad =
+			(vcounter > 225  && vcounter < 228)  ||
+			(vcounter == 225 && hcounter >= 75)  ||
+			(vcounter == 228 && hcounter <= 202);
+		auto_joypad_busy = (auto_read_enabled && reading_joypad);
+		return auto_joypad_busy;
+	}
 
 	// For interrupts
 	Word h_time_target = 0;
@@ -1199,7 +1216,8 @@ private:
 	bool pseudo_hires_mode = false;
 	bool extbg_mode = false;
 	bool external_sync = false;
-
+	bool auto_read_enabled = false;
+	bool auto_joypad_busy = false;
 	bool counter_latch = false;
 
 	Word ophct = 0x00;

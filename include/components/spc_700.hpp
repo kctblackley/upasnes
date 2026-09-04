@@ -74,28 +74,15 @@ public:
 			return;
 		}
 		if (addr == 0xF1) {
-
-		    bool old0 = timers[0].enabled;
-		    bool old1 = timers[1].enabled;
-		    bool old2 = timers[2].enabled;
-
-		    timers[0].enabled = value & 0x01;
-		    timers[1].enabled = value & 0x02;
-		    timers[2].enabled = value & 0x04;
-
-		    if (!old0 && timers[0].enabled) {
-			    timers[0].output = 0;
-			    timers[0].internal_counter = 0;
-			}
-
-		    if (!old1 && timers[1].enabled) {
-			    timers[1].output = 0;
-			    timers[1].internal_counter = 0;
-			}
-
-		    if (!old2 && timers[2].enabled) {
-			    timers[2].output = 0;
-			    timers[2].internal_counter = 0;
+			int count = 0;
+			for (auto& t : timers) {
+				bool old = t.enabled;
+				t.enabled = value & (0b1 << count);
+				if (!old && t.enabled) {
+					t.output = 0;
+					t.internal_counter = 0;
+				}
+				count++;
 			}
 
 		    ipl_rom_enabled = value & 0x80;
