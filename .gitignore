@@ -7,8 +7,9 @@
 !include/**/*.cpp
 !include/**/*.hpp
 !include/**/*.inl
-!ipl/
+ipl/
 !ipl/.gitkeep
+firmware/
 !firmware/.gitkeep
 rom/
 !rom/.gitkeep
