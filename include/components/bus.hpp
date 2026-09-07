@@ -75,6 +75,10 @@ public:
 
 	void wram_refresh_pause();
 
+	Region get_cartridge_region() const {
+		return cartridge->get_region();
+	}
+
 private:
 	WaitCallback callback;
 	Byte data_bus;

@@ -88,7 +88,9 @@ Byte clear_bit(Byte byte, Byte bit);
 void set_lo(uint16_t& val, uint8_t lo);
 void set_hi(uint16_t& val, uint8_t hi);
 // Timing constants
-constexpr CycleCount MASTER_CLOCK = 21477272;
+constexpr CycleCount MASTER_CLOCK_NTSC = 21477272;
+constexpr CycleCount MASTER_CLOCK_PAL  = 21281370;
+
 constexpr CycleCount RICOH_5A22_CYCLE = 6;
 
 // WRAM constants and WRAM Access Constants
@@ -210,3 +212,10 @@ constexpr Offset APUI03 = 0x2143;
 
 constexpr Offset EXPANSION_B_BUS_START = 0x2184;
 constexpr Offset EXPANSION_A_BUS_START = 0x2200;
+
+// Region handling
+
+enum class Region { NTSC, PAL };
+
+Region region_from_header_byte(Byte code);
+

@@ -210,9 +210,9 @@ public:
 			this->revision = SuperFXRevision::GSU2; // GSU2SP1 is same as GSU2
 		}
 
-		if (this->revision == SuperFXRevision::MARIO) {
+		/*if (this->revision == SuperFXRevision::MARIO) {
 			cycles_per_clock = 2;
-		}
+		}*/
 
 		cycles_per_clock = cycles_per_clock / overclock;
 	}
@@ -263,7 +263,7 @@ private:
 	double cycle = 0;
 	double cycles_per_clock = 1;
 
-	double overclock = 5; // Overclock speed multiplier
+	double overclock = 1; // Overclock speed multiplier
 
 	SuperFXRevision revision = SuperFXRevision::None;
 

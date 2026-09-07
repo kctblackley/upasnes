@@ -48,6 +48,10 @@ public:
 		return rom[index % rom.size()];
 	}
 
+	void set_has_superfx() {
+		has_superfx = true;
+	}
+
 protected:
 
 	void log_info() {
@@ -62,6 +66,8 @@ protected:
 	bool save_exists;
 
 	Ricoh5A22* cpu = nullptr;
+
+	bool has_superfx = false;
 
 private:
 

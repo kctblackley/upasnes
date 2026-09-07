@@ -1146,6 +1146,11 @@ public:
 
 	void push_pixel(BG& bg, Pixel px, int& dot);
 
+	void set_region(Region r) {
+		region_setting = r;
+		region = (r == Region::PAL) ? 1 : 0;
+	}
+
 private:
 
 	Ricoh5A22* cpu = nullptr;
@@ -1159,6 +1164,7 @@ private:
 	Byte ppu2_version = PPU2_VERSION;
 	Byte region = 0;
 
+	Region region_setting = Region::NTSC;
 
 	int tile_size;
 	int tiles_x, tiles_y;

@@ -9,5 +9,6 @@
 !include/**/*.inl
 !ipl/
 !ipl/.gitkeep
+!firmware/.gitkeep
 rom/
 !rom/.gitkeep

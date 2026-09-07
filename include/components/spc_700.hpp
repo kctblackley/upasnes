@@ -5,9 +5,6 @@
 #include "common.hpp"
 #include "apubus.hpp"
 
-#define SPC_700_CYCLE_CONSTANT 20.9738991477
-#define SDSP_CYCLE_CONSTANT (SPC_700_CYCLE_CONSTANT * /*128.0*/ 32.0)
-
 enum class APUStubState {
 	WaitForCC,
 	Transfer
@@ -233,6 +230,14 @@ public:
 
 	void log_spc();
 
+	void set_region(Region r) {
+		if (r == Region::PAL) {
+			spc_cycle_constant = MASTER_CLOCK_PAL / 1024000.0;
+		} else {
+			spc_cycle_constant = MASTER_CLOCK_NTSC / 1024000.0;
+		}
+		sdsp_cycle_constant = spc_cycle_constant * 32.0;
+	}
 private:
 	Byte trace_read(Address addr) const;
 	std::string trace_operands(Byte opcode, Address pc) const;
@@ -245,6 +250,9 @@ private:
 	CycleCount cycle; 
 	CycleCount instruction_cycle; 
 	TickCount tick;
+
+	double spc_cycle_constant = MASTER_CLOCK_NTSC / 1024000.0;
+	double sdsp_cycle_constant = spc_cycle_constant * 32.0;
 
 	double master_cycle = 0;
 

@@ -127,6 +127,10 @@ public:
 		);
 	}
 
+	Region get_region() const {
+		return region_from_header_byte(header.region);
+	}
+
 	void write(SNESAddress address, Byte value) override {
 		if (hardware.coprocessor == Coprocessor::SuperFX) {
 			if (superfx.handles(address)) {
@@ -292,6 +296,13 @@ public:
 			superfx.set_revision(hardware.superfx_revision);
 			superfx.set_mapper_type(best->mapper == MapperType::HiROM);
 			superfx.connect_cpu(cpu);
+			std::visit(
+		    [&](auto& m)
+		    {
+		        m.set_has_superfx();
+		    },
+		    mapper
+		);
 		}
 
 		is_fastrom_cartridge = (header.map_mode & 0x10) != 0;

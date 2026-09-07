@@ -1,5 +1,7 @@
 #include "mapper.hpp"
 
+#define MEGABYTE 1048576
+
 class LoROM : public Mapper<LoROM> {
 	friend class Mapper<LoROM>;
 public:
@@ -10,6 +12,9 @@ public:
 
 protected:
 	std::optional<Address> rom_idx(SNESAddress address) const {
+		if (address.bank >= 0x40 && rom.size() <= 2 * MEGABYTE && has_superfx) {
+	        return ((address.bank - 0x40) << 16) | address.offset;
+	    }
 		if (address.offset < 0x8000) {
 			return std::nullopt;
 		}

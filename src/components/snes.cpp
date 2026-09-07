@@ -43,6 +43,9 @@ SNES::SNES() : master_cycle(0) {
 void SNES::load_cartridge(const std::string& directory, const std::string& game_name) {
 	std::cout << "LOADING CARTRIDGE!";
 	bus->load_cartridge(directory, ricoh_5a22, game_name);
+	Region region = bus->get_cartridge_region();
+	ppu->set_region(region);
+	spc_700->set_region(region);
 	initialise();
 }
 
@@ -84,7 +87,7 @@ void SNES::sync_to_superfx() {
 		} else {
 			ppu->tick_component();
 		}
-
+		
 		master_cycle = std::min({ ricoh_5a22->get_cycle(), spc_700->get_cycle(), ppu->get_cycle() });
 	}
 }

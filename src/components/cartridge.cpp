@@ -27,21 +27,66 @@ constexpr HardwareDatabaseEntry BuildDatabaseEntry(Byte gc0 = 0, Byte gc1 = 0, B
 	return hde;
 }
 
-constexpr std::array<HardwareDatabaseEntry, 7> hardware_database_entries = {
-	// SuperFX Games
-	/* Star Fox */       BuildDatabaseEntry(0xFF, 0xFF, 0xFF, 0xFF, 0xAB12, 0x54ED, Coprocessor::SuperFX, DSPRevision::None, SuperFXRevision::MARIO, SA1Revision::None, SDD1Revision::None),
-	/* Dirt Racer */     //BuildDatabaseEntry(), // Only released in Europe, won't run on my emulator
-	/* Dirt Trax FX */   BuildDatabaseEntry(0x41, 0x46, 0x39, 0x45, 0x8DC1, 0x723E, Coprocessor::SuperFX, DSPRevision::None, SuperFXRevision::GSU1, SA1Revision::None, SDD1Revision::None),
-	/* Stunt Race FX */  BuildDatabaseEntry(0x43, 0x51, 0x20, 0x20, 0xD7C8, 0x2837, Coprocessor::SuperFX, DSPRevision::None, SuperFXRevision::GSU1, SA1Revision::None, SDD1Revision::None),
-	/* Vortex */         BuildDatabaseEntry(0x34, 0x56, 0x20, 0x20, 0x4DBF, 0xB240, Coprocessor::SuperFX, DSPRevision::None, SuperFXRevision::GSU1, SA1Revision::None, SDD1Revision::None),
-	/* Doom */           BuildDatabaseEntry(0x41, 0x44, 0x38, 0x45, 0xB564, 0x4A9B, Coprocessor::SuperFX, DSPRevision::None, SuperFXRevision::GSU2, SA1Revision::None, SDD1Revision::None),
-	/* Yoshi's Island */ BuildDatabaseEntry(0x59, 0x49, 0x20, 0x20, 0x132C, 0xECD3, Coprocessor::SuperFX, DSPRevision::None, SuperFXRevision::GSU2SP1, SA1Revision::None, SDD1Revision::None),
-	/* Winter Gold */    // BuildDatabaseEntry(), // Also only a Europe-only release
+constexpr std::array<HardwareDatabaseEntry, 11> hardware_database_entries = {
+	// SuperFX MARIO Games
+	/* Star Fox */                                    BuildDatabaseEntry(0xFF, 0xFF, 0xFF, 0xFF, 0xAB12, 0x54ED, Coprocessor::SuperFX, DSPRevision::None, SuperFXRevision::MARIO, SA1Revision::None, SDD1Revision::None),
+	/* Star Fox (Competitive Edition)*/               BuildDatabaseEntry(0xFF, 0xFF, 0xFF, 0xFF, 0xAEA1, 0x515E, Coprocessor::SuperFX, DSPRevision::None, SuperFXRevision::MARIO, SA1Revision::None, SDD1Revision::None),
+	
+	// SuperFX GSU1 Games
+	/* Dirt Racer */                                  BuildDatabaseEntry(0x41, 0x44, 0x49, 0x50, 0xA1DC, 0x5E23, Coprocessor::SuperFX, DSPRevision::None, SuperFXRevision::GSU1, SA1Revision::None, SDD1Revision::None),
+	/* Dirt Trax FX */                                BuildDatabaseEntry(0x41, 0x46, 0x39, 0x45, 0x8DC1, 0x723E, Coprocessor::SuperFX, DSPRevision::None, SuperFXRevision::GSU1, SA1Revision::None, SDD1Revision::None),
+	/* Stunt Race FX */                               BuildDatabaseEntry(0x43, 0x51, 0x20, 0x20, 0xD7C8, 0x2837, Coprocessor::SuperFX, DSPRevision::None, SuperFXRevision::GSU1, SA1Revision::None, SDD1Revision::None),
+	/* Vortex */                                      BuildDatabaseEntry(0x34, 0x56, 0x20, 0x20, 0x4DBF, 0xB240, Coprocessor::SuperFX, DSPRevision::None, SuperFXRevision::GSU1, SA1Revision::None, SDD1Revision::None),
+	/* Powerslide */                                  BuildDatabaseEntry(0xFF, 0xFF, 0xFF, 0xFF, 0x0000, 0xFFFF, Coprocessor::SuperFX, DSPRevision::None, SuperFXRevision::GSU1, SA1Revision::None, SDD1Revision::None),
+	
+	// SuperFX GSU2 Games
+	/* Doom */                                        BuildDatabaseEntry(0x41, 0x44, 0x38, 0x45, 0xB564, 0x4A9B, Coprocessor::SuperFX, DSPRevision::None, SuperFXRevision::GSU2, SA1Revision::None, SDD1Revision::None),
+	/* Yoshi's Island */                              BuildDatabaseEntry(0x59, 0x49, 0x20, 0x20, 0x132C, 0xECD3, Coprocessor::SuperFX, DSPRevision::None, SuperFXRevision::GSU2SP1, SA1Revision::None, SDD1Revision::None),
+	/* Winter Gold */                                 BuildDatabaseEntry(0x41, 0x58, 0x53, 0x50, 0x9D87, 0x6278, Coprocessor::SuperFX, DSPRevision::None, SuperFXRevision::GSU2, SA1Revision::None, SDD1Revision::None),
+	/* Star Fox 2 */                                  BuildDatabaseEntry(0x53, 0x54, 0x32, 0x4A, 0x5F3F, 0xA0C0, Coprocessor::SuperFX, DSPRevision::None, SuperFXRevision::GSU2, SA1Revision::None, SDD1Revision::None)
 
-	// Unreleased SuperFX Games
-	/* Star Fox 2 */     BuildDatabaseEntry(0x53, 0x54, 0x32, 0x4A, 0x5F3F, 0xA0C0, Coprocessor::SuperFX, DSPRevision::None, SuperFXRevision::GSU2, SA1Revision::None, SDD1Revision::None)
+	// DSP-1/DSP-1A Games
 
-	// DSP Games
+	// Ace Wo Nerae! 3D Tennis
+	// Armored Trooper Votoms: The Battling Road
+	// Battle Racers
+	// Bike Daisuki! Hashiriya Kon - Rider's Spirits 
+	// Final Stretch
+	// Korean League / Hanguk Pro Yagu
+	// Lock-On / Super Air Diver
+	// Michael Andretti's Indy Car Challenge
+	// Pilotwings
+	// Shutokou Battle '94: K.T. Drift King
+	// Shutokou Battle 2 : Drift King K.T. & M.B.
+	// Super 3D Baseball
+	// Super Air Diver 2
+	// Super Bases Loaded 2
+	// Super F1 Circus Gaiden
+	// Super Mario Kart (DSP-1 Version)
+	// Suzuka 8 Hours
+	// Touge Densetsu: Saisoku Battle
+
+	// DSP-1B Games
+	// Ballz 3D, 3 Jigen Kakutou Ballz
+	// Super Mario Kart (DSP-1B Version)
+
+	// DSP-2 Games
+	// Dungeon Master
+
+	// DSP-3 Games
+	// SD Gundam GX
+
+	// DSP-4 Games
+	// Top Gear 3000
+	
+	// ST010 Games
+	// F1 Race of Champions / Exhaust Heat II
+
+	// STO11 Games
+	// Hayazashi Nidan Morita Shogi
+
+	// ST018 Games
+	// Hayazashi Nidan Morita Shogi 2
 };
 
 const HardwareDatabaseEntry* find_hardware_database_entry(const CartridgeHeader& h) {

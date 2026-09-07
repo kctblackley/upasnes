@@ -888,7 +888,8 @@ void PPU::call_nmi() {
 }
 
 bool PPU::frame_ended() {
-	return vcounter >= 262;
+	int total_lines = (region_setting == Region::PAL) ? 312 : 262;
+	return vcounter >= total_lines;
 }
 
 void PPU::next_frame() {

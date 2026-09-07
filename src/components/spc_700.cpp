@@ -229,19 +229,19 @@ void SPC700::run_half_cycle() {
 
 void SPC700::accumulate_dsp(CycleCount delta) {
 	dsp_accumulated_cycles += delta;
-	while (dsp_accumulated_cycles > SDSP_CYCLE_CONSTANT) {
+	while (dsp_accumulated_cycles > sdsp_cycle_constant) {
 		sdsp_ticks_this_frame++;
 		bus->tick_sdsp();
-		dsp_accumulated_cycles -= SDSP_CYCLE_CONSTANT;
+		dsp_accumulated_cycles -= sdsp_cycle_constant;
 	}
 }
 
 void SPC700::log_spc() {
-	/*if constexpr (SHOW_LOGS) {
+	if constexpr (SHOW_SPC_LOGS) {
 		if (instruction_cycle == 0 && BufferOpCode < 256) {
 			log_instruction();
 		}
-	}*/
+	}
 }
 
 void SPC700::tick_component() { // when the component is ticked, it does a half tick in actuality
@@ -257,7 +257,7 @@ void SPC700::tick_component() { // when the component is ticked, it does a half 
 		}
 		tick++;
 		run_half_cycle();
-		master_cycle += SPC_700_CYCLE_CONSTANT / 2.00f;
+		master_cycle += spc_cycle_constant / 2.00F;
 	} else {
 		tick_timer(0, 128);
 		tick_timer(1, 128);
@@ -265,7 +265,7 @@ void SPC700::tick_component() { // when the component is ticked, it does a half 
 		tick++;
 		run_half_cycle();
 		run_half_cycle();
-		master_cycle += SPC_700_CYCLE_CONSTANT;
+		master_cycle += spc_cycle_constant;
 	}
 }
 
@@ -290,8 +290,8 @@ void SPC700::reset() { // RUN IPL ROM HERE! MEMORY MAP THE IPL ROM!
 
 	BufferOpCode = read(regs.PC);
 	write(0xF0, 0x0A);
-	spc_to_cpu_ports[0] = 0xAA;
-	spc_to_cpu_ports[1] = 0xBB;
+	//spc_to_cpu_ports[0] = 0xAA;
+	//spc_to_cpu_ports[1] = 0xBB;
 
 	while (regs.PC != 0xFFC5 || instruction_cycle != 0) {
 		tick_component();
