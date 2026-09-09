@@ -11,64 +11,64 @@ public:
 	struct Registers {
 
 		// Both
-		Word A = 0;
-		Word X = 0;
-		Word Y = 0;
-		Word PC = 0;
-		Word S = 0;
-		Byte P = 0;
+		u16 A = 0;
+		u16 X = 0;
+		u16 Y = 0;
+		u16 PC = 0;
+		u16 S = 0;
+		u8 P = 0;
 
 		// Ricoh 5A22
 
-		Word D = 0;
-		Byte DB = 0;
-		Byte PB = 0;
+		u16 D = 0;
+		u8 DB = 0;
+		u8 PB = 0;
 		bool emulation_mode = false;
 		
 	};
 
 	Registers regs;
 
-	Word BufferOpCode = 0;
-	Word BufferPointer = 0;
-	Word BufferAddress = 0;
-	Word BufferOperand = 0;
-	Word BufferOperand16 = 0; // Additional operand buffer just for 16-bit ops in SPC-700
-	Word BufferOperand0 = 0;
-	Word BufferOperand1 = 0;
-	Word BufferBank = 0;
-	Word BufferOrig = 0;
-	Word BufferMVDest = 0;
-	Word BufferStackAddress = 0;
-	Word BufferTmp  = 0;
-	Word BufferTmpR = 0;
-	Word BufferUnderflow = 0;
-	Word BufferOverflow = 0;
-	Word BufferLowZero = 0;
-	Word Vector = 0;
+	u16 BufferOpCode = 0;
+	u16 BufferPointer = 0;
+	u16 BufferAddress = 0;
+	u16 BufferOperand = 0;
+	u16 BufferOperand16 = 0; // Additional operand buffer just for 16-bit ops in SPC-700
+	u16 BufferOperand0 = 0;
+	u16 BufferOperand1 = 0;
+	u16 BufferBank = 0;
+	u16 BufferOrig = 0;
+	u16 BufferMVDest = 0;
+	u16 BufferStackAddress = 0;
+	u16 BufferTmp  = 0;
+	u16 BufferTmpR = 0;
+	u16 BufferUnderflow = 0;
+	u16 BufferOverflow = 0;
+	u16 BufferLowZero = 0;
+	u16 Vector = 0;
 
-	Word YABuffer = 0; // just a buffer, does not give actual value of YA for SPC-700
-	Word BufferJump = 0;
+	u16 YABuffer = 0; // just a buffer, does not give actual value of YA for SPC-700
+	u16 BufferJump = 0;
 
-	uint32_t DivYa = 0;
-	uint32_t ShiftedX = 0;
+	u32 DivYa = 0;
+	u32 ShiftedX = 0;
 
-	Word TransferCount = 0;
+	u16 TransferCount = 0;
 
-	Word DiscardBuffer = 0;
+	u16 DiscardBuffer = 0;
 
 	bool condition = 0;
 	bool waiting = false;
 	bool Branching = 0;
 	bool BoundaryCrossed = 0;
 
-	Byte open_bus = 0x00;
+	u8 open_bus = 0x00;
 
-	Byte get_open_bus() {
+	u8 get_open_bus() {
 		return open_bus;
 	}
 
-	void set_open_bus(Byte value) {
+	void set_open_bus(u8 value) {
 		open_bus = value;
 	}
 
@@ -87,17 +87,17 @@ public:
 	bool get_flag_H() = delete;
 	bool get_flag_B() = delete;
 	
-	void set_flag_N(Byte value) = delete;
-	void set_flag_V(Byte value) = delete;
-	void set_flag_M(Byte value) = delete;
-	void set_flag_X(Byte value) = delete;
-	void set_flag_D(Byte value) = delete;
-	void set_flag_I(Byte value) = delete;
-	void set_flag_Z(Word value) = delete;
-	void set_flag_C(Byte value) = delete;
-	void set_flag_P(Byte value) = delete;
-	void set_flag_H(Byte value) = delete;
-	void set_flag_B(Byte value) = delete;
+	void set_flag_N(u8 value) = delete;
+	void set_flag_V(u8 value) = delete;
+	void set_flag_M(u8 value) = delete;
+	void set_flag_X(u8 value) = delete;
+	void set_flag_D(u8 value) = delete;
+	void set_flag_I(u8 value) = delete;
+	void set_flag_Z(u16 value) = delete;
+	void set_flag_C(u8 value) = delete;
+	void set_flag_P(u8 value) = delete;
+	void set_flag_H(u8 value) = delete;
+	void set_flag_B(u8 value) = delete;
 
 	void set_flag_N() = delete;
 	void set_flag_V() = delete;
@@ -126,6 +126,6 @@ public:
 	virtual void enable_test_mode() = 0;
 	virtual void disable_test_mode() = 0;
 	virtual void reset_test_memory() = 0;
-	virtual Byte test_peek(Address addr) = 0;
-	virtual void test_poke(Address addr, Byte value) = 0;
+	virtual u8 test_peek(u32 addr) = 0;
+	virtual void test_poke(u32 addr, u8 value) = 0;
 };

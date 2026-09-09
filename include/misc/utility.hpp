@@ -8,7 +8,7 @@
 #include <vector>
 #include <iostream>
 
-using Byte = uint8_t;
+using u8 = uint8_t;
 
 // For actual ROM files (this is a useless comment why did I write this?)
-std::vector<Byte> load_rom(const std::string& filename);
+std::vector<u8> load_rom(const std::string& filename);

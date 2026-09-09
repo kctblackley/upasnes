@@ -14,8 +14,8 @@ struct OpCodeInfo
     const char* mnemonic;
     const char* addressing_mode;
     SizeType size_type;
-    uint8_t size_when_set;
-    uint8_t size_when_clear;
+    u8 size_when_set;
+    u8 size_when_clear;
 };
 
 constexpr OpCodeInfo ricoh_5a22_opcode_info[256] = {

@@ -2,8 +2,8 @@
 #include "bus.hpp"
 
 bool DMAChannel::load_descriptor() {
-	Byte src_bank = 0x00;
-	Word src_address = 0x00;
+	u8 src_bank = 0x00;
+	u16 src_address = 0x00;
 
 	new_indirect_address = false;
 	reload_penalty = 24;
@@ -43,9 +43,9 @@ bool DMAChannel::load_descriptor() {
 		int unit_size = transfer_units[transfer_unit_select].size;
 		
 		for (int i = 0; i < lines_to_transfer; i++) {
-			Address src = (src_bank << 16) | src_address;
+			u32 src = (src_bank << 16) | src_address;
 
-			Byte ntrl_after = 0x80 | ((lines_to_transfer - (i + 1)) & 0x7F);
+			u8 ntrl_after = 0x80 | ((lines_to_transfer - (i + 1)) & 0x7F);
 			push_unit(src, bbad, true, transfer_unit_select, 0, ntrl_after);
 
 			src_address += unit_size;
@@ -53,12 +53,12 @@ bool DMAChannel::load_descriptor() {
 
 	} else {
 
-		Address src = (src_bank << 16) | src_address;
+		u32 src = (src_bank << 16) | src_address;
 
 		push_unit(src, bbad, true, transfer_unit_select, 0, (lines_to_transfer - 1) & 0x7F);
 
 		for (int i = 1; i < lines_to_transfer; i++) {
-			Byte ntrl_after = (lines_to_transfer - (i + 1)) & 0x7F;
+			u8 ntrl_after = (lines_to_transfer - (i + 1)) & 0x7F;
 			push_unit(src, bbad, false, transfer_unit_select, 0, ntrl_after);
 		}
 
@@ -99,7 +99,7 @@ Unit DMAChannel::do_transfer() {
 	return default_unit;
 }
 
-Byte DMAChannel::read_a_bus() {
+u8 DMAChannel::read_a_bus() {
 	SNESAddress snes_address = SNESAddress{a1_bank, table_address};
 	if (is_forbidden_a_bus_address(snes_address)) {
 		return bus->get_open_bus();

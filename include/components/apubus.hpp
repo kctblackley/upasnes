@@ -12,15 +12,15 @@ class APUBus {
 public:
 	APUBus();
 
-	Byte read(Word address);
+	u8 read(u16 address);
 
-	void write(Word address, Byte value);
+	void write(u16 address, u8 value);
 
-	Byte aram_read(Word address) {
+	u8 aram_read(u16 address) {
 		return data[address];
 	}
 
-	void aram_write(Word address, Byte value) {
+	void aram_write(u16 address, u8 value) {
 		data[address] = value;
 	}
 
@@ -53,10 +53,10 @@ private:
 	SDSP sdsp;
 
 	bool ipl_enabled = false;
-	std::array<Byte, APU_DATA_SIZE> data {};
+	std::array<u8, APU_DATA_SIZE> data {};
 
-	std::array<Byte, IPL_SIZE> ipl {};
+	std::array<u8, IPL_SIZE> ipl {};
 
-	Byte dsp_address = 0x00;
+	u8 dsp_address = 0x00;
 
 };

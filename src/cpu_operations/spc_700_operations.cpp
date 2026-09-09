@@ -22,11 +22,11 @@ namespace SPC700SpecialFunctions {
 }
 
 namespace SPC700Functions {
-	static Word ya(SPC700& cpu) {
-		return ((uint8_t)(cpu.regs.Y) << 8) | get_lo(cpu.regs.A);
+	static u16 ya(SPC700& cpu) {
+		return ((u8)(cpu.regs.Y) << 8) | get_lo(cpu.regs.A);
 	}
 
-	static void SetNZ(SPC700& cpu, bool skipped, Word value) {
+	static void SetNZ(SPC700& cpu, bool skipped, u16 value) {
 		if (value & 0x80) {
 			cpu.set_flag_N();
 		} else {
@@ -62,31 +62,31 @@ namespace SPC700Functions {
 			cpu.set_flag_X();
 			break;
 		case SubFunc::SetNZFlagRegisterA:
-			SPC700Functions::SetNZ(cpu, skipped, (uint8_t)cpu.regs.A);
+			SPC700Functions::SetNZ(cpu, skipped, (u8)cpu.regs.A);
 			break;
 		case SubFunc::SetNZFlagRegisterYA:
-			SPC700Functions::SetNZ(cpu, skipped, (uint8_t)cpu.regs.Y);
+			SPC700Functions::SetNZ(cpu, skipped, (u8)cpu.regs.Y);
 			break;
 		case SubFunc::SetNZFlagRegisterX:
-			SPC700Functions::SetNZ(cpu, skipped, (uint8_t)cpu.regs.X);
+			SPC700Functions::SetNZ(cpu, skipped, (u8)cpu.regs.X);
 			break;
 		case SubFunc::SetNZFlagRegisterY:
-			SPC700Functions::SetNZ(cpu, skipped, (uint8_t)cpu.regs.Y);
+			SPC700Functions::SetNZ(cpu, skipped, (u8)cpu.regs.Y);
 			break;
 		case SubFunc::SetNZFlagOperand:
-			SPC700Functions::SetNZ(cpu, skipped, (uint8_t)cpu.BufferOperand);
+			SPC700Functions::SetNZ(cpu, skipped, (u8)cpu.BufferOperand);
 			break;
 		case SubFunc::SetNZFlagOperand0:
-			SPC700Functions::SetNZ(cpu, skipped, (uint8_t)cpu.BufferOperand0);
+			SPC700Functions::SetNZ(cpu, skipped, (u8)cpu.BufferOperand0);
 			break;
 		case SubFunc::SetSubFunc:
 			SPC700Functions::SetFuncOperand(cpu, skipped);
 			break;
 		case SubFunc::IncrementAddressByX:
-			cpu.BufferAddress += (uint8_t)cpu.regs.X;
+			cpu.BufferAddress += (u8)cpu.regs.X;
 			break;
 		case SubFunc::IncrementAddressByY:
-			cpu.BufferAddress += (uint8_t)cpu.regs.Y;
+			cpu.BufferAddress += (u8)cpu.regs.Y;
 			break;
 		}
 	}
@@ -128,16 +128,16 @@ namespace SPC700Functions {
 
 	template <typename From, typename To>
 	static void Read(SPC700& cpu, bool skipped) {
-		Word address;
+		u16 address;
 
 		// read from...
 		if constexpr (std::is_same_v<From, ReadFrom::PC>)     { address = cpu.regs.PC; }
 		
-		if constexpr (std::is_same_v<From, ReadFrom::StackMinus2>) { address = 0x0100 | (uint8_t)(cpu.regs.S - 2); }
-		if constexpr (std::is_same_v<From, ReadFrom::StackMinus1>) { address = 0x0100 | (uint8_t)(cpu.regs.S - 1); }
-		if constexpr (std::is_same_v<From, ReadFrom::Stack0>)      { address = 0x0100 | (uint8_t)(cpu.regs.S + 0); }
-		if constexpr (std::is_same_v<From, ReadFrom::Stack1>)      { address = 0x0100 | (uint8_t)(cpu.regs.S + 1); }
-		if constexpr (std::is_same_v<From, ReadFrom::Stack2>)      { address = 0x0100 | (uint8_t)(cpu.regs.S + 2); }
+		if constexpr (std::is_same_v<From, ReadFrom::StackMinus2>) { address = 0x0100 | (u8)(cpu.regs.S - 2); }
+		if constexpr (std::is_same_v<From, ReadFrom::StackMinus1>) { address = 0x0100 | (u8)(cpu.regs.S - 1); }
+		if constexpr (std::is_same_v<From, ReadFrom::Stack0>)      { address = 0x0100 | (u8)(cpu.regs.S + 0); }
+		if constexpr (std::is_same_v<From, ReadFrom::Stack1>)      { address = 0x0100 | (u8)(cpu.regs.S + 1); }
+		if constexpr (std::is_same_v<From, ReadFrom::Stack2>)      { address = 0x0100 | (u8)(cpu.regs.S + 2); }
 
 		if constexpr (std::is_same_v<From, ReadFrom::Pointer>)        { address = cpu.BufferPointer; }
 		if constexpr (std::is_same_v<From, ReadFrom::PointerPlusOne>) { address = cpu.BufferPointer + 1; }
@@ -152,7 +152,7 @@ namespace SPC700Functions {
 		if constexpr (std::is_same_v<From, ReadFrom::YPSW>) { address = ((cpu.regs.Y & 0xFF) | ((cpu.regs.P & 0x20) << 3)); }
 		if constexpr (std::is_same_v<From, ReadFrom::AddressPlusOnePSW>) { address = ((cpu.BufferAddress + 1) & 0xFF) | ((cpu.regs.P & 0x20) << 3); }
 
-		Byte value = cpu.read(address);
+		u8 value = cpu.read(address);
 		// read to...
 		if constexpr (std::is_same_v<To, ReadTo::Discard>) { return; }
 		if constexpr (std::is_same_v<To, ReadTo::P>)       { cpu.regs.P  = value; }
@@ -160,15 +160,15 @@ namespace SPC700Functions {
 		if constexpr (std::is_same_v<To, ReadTo::X>)       { cpu.regs.X  = value; }
 		if constexpr (std::is_same_v<To, ReadTo::Y>)       { cpu.regs.Y  = value; }
 		if constexpr (std::is_same_v<To, ReadTo::PC>)      { cpu.regs.PC = value; }
-		if constexpr (std::is_same_v<To, ReadTo::PCLow>)   { cpu.regs.PC = (get_hi(cpu.regs.PC) << 8) | (uint8_t)(value); }
-		if constexpr (std::is_same_v<To, ReadTo::PCHigh>)  { cpu.regs.PC = ((uint8_t)value << 8) | get_lo(cpu.regs.PC); }
+		if constexpr (std::is_same_v<To, ReadTo::PCLow>)   { cpu.regs.PC = (get_hi(cpu.regs.PC) << 8) | (u8)(value); }
+		if constexpr (std::is_same_v<To, ReadTo::PCHigh>)  { cpu.regs.PC = ((u8)value << 8) | get_lo(cpu.regs.PC); }
 		
-		if constexpr (std::is_same_v<To, ReadTo::AddressLow>)     { cpu.BufferAddress   = (get_hi(cpu.BufferAddress) << 8) | (uint8_t)(value); }
-		if constexpr (std::is_same_v<To, ReadTo::AddressHigh>)    { cpu.BufferAddress   = ((uint8_t)(value) << 8) | get_lo(cpu.BufferAddress); }
-		if constexpr (std::is_same_v<To, ReadTo::Operand16Low>)   { cpu.BufferOperand16 = (get_hi(cpu.BufferOperand16) << 8) | (uint8_t)(value); }
-		if constexpr (std::is_same_v<To, ReadTo::Operand16High>)  { cpu.BufferOperand16 = ((uint8_t)(value) << 8) | get_lo(cpu.BufferOperand16); }
-		if constexpr (std::is_same_v<To, ReadTo::PointerLow>)     { cpu.BufferPointer   = (get_hi(cpu.BufferPointer) << 8) | (uint8_t)(value); }
-		if constexpr (std::is_same_v<To, ReadTo::PointerHigh>)    { cpu.BufferPointer   = ((uint8_t)(value) << 8) | get_lo(cpu.BufferPointer); }
+		if constexpr (std::is_same_v<To, ReadTo::AddressLow>)     { cpu.BufferAddress   = (get_hi(cpu.BufferAddress) << 8) | (u8)(value); }
+		if constexpr (std::is_same_v<To, ReadTo::AddressHigh>)    { cpu.BufferAddress   = ((u8)(value) << 8) | get_lo(cpu.BufferAddress); }
+		if constexpr (std::is_same_v<To, ReadTo::Operand16Low>)   { cpu.BufferOperand16 = (get_hi(cpu.BufferOperand16) << 8) | (u8)(value); }
+		if constexpr (std::is_same_v<To, ReadTo::Operand16High>)  { cpu.BufferOperand16 = ((u8)(value) << 8) | get_lo(cpu.BufferOperand16); }
+		if constexpr (std::is_same_v<To, ReadTo::PointerLow>)     { cpu.BufferPointer   = (get_hi(cpu.BufferPointer) << 8) | (u8)(value); }
+		if constexpr (std::is_same_v<To, ReadTo::PointerHigh>)    { cpu.BufferPointer   = ((u8)(value) << 8) | get_lo(cpu.BufferPointer); }
 
 		if constexpr (std::is_same_v<To, ReadTo::Operand>)  { cpu.BufferOperand  = value; }
 		if constexpr (std::is_same_v<To, ReadTo::Operand0>) { cpu.BufferOperand0 = value; }
@@ -178,7 +178,7 @@ namespace SPC700Functions {
 	template <typename Value, typename To>
 	static void Write(SPC700& cpu, bool skipped) {
 		// write the value...
-		Byte value;
+		u8 value;
 		if constexpr (std::is_same_v<Value, WriteValue::P>)      { value = cpu.regs.P; }
 		if constexpr (std::is_same_v<Value, WriteValue::A>)      { value = cpu.regs.A; }
 		if constexpr (std::is_same_v<Value, WriteValue::X>)      { value = cpu.regs.X; }
@@ -191,12 +191,12 @@ namespace SPC700Functions {
 		if constexpr (std::is_same_v<Value, WriteValue::Operand0>)  { value = cpu.BufferOperand0; }
 		if constexpr (std::is_same_v<Value, WriteValue::Operand1>)  { value = cpu.BufferOperand1; }
 
-		Word address;
-		if constexpr (std::is_same_v<To, WriteTo::StackMinus2>) { address = 0x0100 | (uint8_t)(cpu.regs.S - 2); }
-		if constexpr (std::is_same_v<To, WriteTo::StackMinus1>) { address = 0x0100 | (uint8_t)(cpu.regs.S - 1); }
-		if constexpr (std::is_same_v<To, WriteTo::Stack0>)      { address = 0x0100 | (uint8_t)(cpu.regs.S + 0); }
-		if constexpr (std::is_same_v<To, WriteTo::Stack1>)      { address = 0x0100 | (uint8_t)(cpu.regs.S + 1); }
-		if constexpr (std::is_same_v<To, WriteTo::Stack2>)      { address = 0x0100 | (uint8_t)(cpu.regs.S + 2); }
+		u16 address;
+		if constexpr (std::is_same_v<To, WriteTo::StackMinus2>) { address = 0x0100 | (u8)(cpu.regs.S - 2); }
+		if constexpr (std::is_same_v<To, WriteTo::StackMinus1>) { address = 0x0100 | (u8)(cpu.regs.S - 1); }
+		if constexpr (std::is_same_v<To, WriteTo::Stack0>)      { address = 0x0100 | (u8)(cpu.regs.S + 0); }
+		if constexpr (std::is_same_v<To, WriteTo::Stack1>)      { address = 0x0100 | (u8)(cpu.regs.S + 1); }
+		if constexpr (std::is_same_v<To, WriteTo::Stack2>)      { address = 0x0100 | (u8)(cpu.regs.S + 2); }
 		if constexpr (std::is_same_v<To, WriteTo::Address>)     { address = cpu.BufferAddress; }
 		if constexpr (std::is_same_v<To, WriteTo::Address1FFF>) { address = cpu.BufferAddress & 0x1FFF; }
 		if constexpr (std::is_same_v<To, WriteTo::XPSW>)        { address = ((cpu.regs.X & 0xFF) | ((cpu.regs.P & 0x20) << 3)); }
@@ -211,37 +211,37 @@ namespace SPC700Functions {
 
 	template <int value = 1, SubFunc func = SubFunc::None>
 	static void DecrementS(SPC700& cpu, bool skipped) {
-		cpu.regs.S = (uint8_t)(cpu.regs.S - value);
+		cpu.regs.S = (u8)(cpu.regs.S - value);
 		SPC700Functions::sub_func(cpu, skipped, func);
 	}
 
 	template <int value = 1, SubFunc func = SubFunc::None>
 	static void IncrementS(SPC700& cpu, bool skipped) {
-		cpu.regs.S = (uint8_t)(cpu.regs.S + value);
+		cpu.regs.S = (u8)(cpu.regs.S + value);
 		SPC700Functions::sub_func(cpu, skipped, func);
 	}
 
 	template <int value = 1, SubFunc func = SubFunc::None>
 	static void DecrementX(SPC700& cpu, bool skipped) {
-		cpu.regs.X = (uint8_t)(cpu.regs.X - value);
+		cpu.regs.X = (u8)(cpu.regs.X - value);
 		SPC700Functions::sub_func(cpu, skipped, func);
 	}
 
 	template <int value = 1, SubFunc func = SubFunc::None>
 	static void IncrementX(SPC700& cpu, bool skipped) {
-		cpu.regs.X = (uint8_t)(cpu.regs.X + value);
+		cpu.regs.X = (u8)(cpu.regs.X + value);
 		SPC700Functions::sub_func(cpu, skipped, func);
 	}
 
 	template<int call = 0>
 	static void TCallLow(SPC700& cpu, bool skipped) {
-		Byte value = cpu.read(0xFFDE - (2 * call));
+		u8 value = cpu.read(0xFFDE - (2 * call));
 		cpu.regs.PC = (get_hi(cpu.regs.PC) << 8) | value;
 	}
 
 	template<int call = 0>
 	static void TCallHigh(SPC700& cpu, bool skipped) {
-		Byte value = cpu.read(0xFFDF - (2 * call));
+		u8 value = cpu.read(0xFFDF - (2 * call));
 		cpu.regs.PC = (value << 8) | get_lo(cpu.regs.PC);
 	}
 
@@ -250,13 +250,13 @@ namespace SPC700Functions {
 		switch(step) {
 		case 1:
 			if (cpu.get_flag_C() || (cpu.regs.A & 0xFF) > 0x99) {
-				cpu.regs.A = (uint8_t)(cpu.regs.A + 0x60);
+				cpu.regs.A = (u8)(cpu.regs.A + 0x60);
 				cpu.set_flag_C();
 			}
 			break;
 		case 2:
 			if (cpu.get_flag_H() || (cpu.regs.A & 0x0F) > 0x09) {
-				cpu.regs.A = (uint8_t)(cpu.regs.A + 0x06);
+				cpu.regs.A = (u8)(cpu.regs.A + 0x06);
 			}
 			if (cpu.regs.A & 0x80) {
 				cpu.set_flag_N();
@@ -277,13 +277,13 @@ namespace SPC700Functions {
 		switch (step) {
 		case 1:
 			if (!cpu.get_flag_C() || (cpu.regs.A & 0xFF) > 0x99) {
-				cpu.regs.A = (uint8_t)(cpu.regs.A - 0x60);
+				cpu.regs.A = (u8)(cpu.regs.A - 0x60);
 				cpu.clear_flag_C();
 			}
 			break;
 		case 2:
 			if (!cpu.get_flag_H() || (cpu.regs.A & 0x0F) > 0x09) {
-				cpu.regs.A = (uint8_t)(cpu.regs.A - 0x06);
+				cpu.regs.A = (u8)(cpu.regs.A - 0x06);
 			}
 			if (cpu.regs.A & 0x80) {
 				cpu.set_flag_N();
@@ -301,9 +301,9 @@ namespace SPC700Functions {
 
 	template <SubFunc func = SubFunc::None>
 	static void XCN(SPC700& cpu, bool skipped) {
-		Byte value = cpu.regs.A;
+		u8 value = cpu.regs.A;
 		value = (value >> 7) | (value << 1);
-		cpu.regs.A = (uint8_t)(value);
+		cpu.regs.A = (u8)(value);
 		SPC700Functions::sub_func(cpu, skipped, func);
 	}
 
@@ -323,8 +323,8 @@ namespace SPC700Functions {
 		        cpu.clear_flag_V();
 		    }
 
-		    cpu.DivYa = static_cast<uint32_t>(ya(cpu));
-		    cpu.ShiftedX = static_cast<uint32_t>(cpu.regs.X) << 9;
+		    cpu.DivYa = static_cast<u32>(ya(cpu));
+		    cpu.ShiftedX = static_cast<u32>(cpu.regs.X) << 9;
 		    break;
 		case 2:
 			cpu.DivYa = cpu.DivYa << 1;
@@ -339,8 +339,8 @@ namespace SPC700Functions {
 			}
 			break;
 		case 3:
-			cpu.regs.Y = (uint8_t)(cpu.DivYa >> 9);
-			cpu.regs.A = (uint8_t)(cpu.DivYa);
+			cpu.regs.Y = (u8)(cpu.DivYa >> 9);
+			cpu.regs.A = (u8)(cpu.DivYa);
 			break;
 		}
 		SPC700Functions::sub_func(cpu, skipped, func);
@@ -355,8 +355,8 @@ namespace SPC700Functions {
 			cpu.YABuffer = (cpu.regs.Y & 0xFF) * (cpu.regs.A & 0xFF);
 			break;
 		case 2:
-			cpu.regs.A = (uint8_t)get_lo(cpu.YABuffer);
-			cpu.regs.Y = (uint8_t)get_hi(cpu.YABuffer);
+			cpu.regs.A = (u8)get_lo(cpu.YABuffer);
+			cpu.regs.Y = (u8)get_hi(cpu.YABuffer);
 			break;
 		}
 		SPC700Functions::sub_func(cpu, skipped, func);
@@ -364,13 +364,13 @@ namespace SPC700Functions {
 
 	template<int shift = 0>
 	static void SET(SPC700& cpu, bool skipped) {
-		Byte mask = (1 << shift);
+		u8 mask = (1 << shift);
 		cpu.BufferOperand = ((cpu.BufferOperand & ~mask) | mask);
 	}
 
 	template<int shift = 0>
 	static void CLR(SPC700& cpu, bool skipped) {
-		Byte mask = (1 << shift);
+		u8 mask = (1 << shift);
 		cpu.BufferOperand = ((cpu.BufferOperand & ~mask) | 0x00);
 	}
 
@@ -388,7 +388,7 @@ namespace SPC700Functions {
 	static void Branch(SPC700& cpu, bool skipped) {
 		switch(step) {
 		case 1:
-			cpu.BufferAddress = cpu.regs.PC + (int8_t)(cpu.BufferOperand);
+			cpu.BufferAddress = cpu.regs.PC + (i8)(cpu.BufferOperand);
 			cpu.regs.PC = (get_hi(cpu.regs.PC) << 8) | get_lo(cpu.BufferAddress);
 			break;
 		case 2:
@@ -399,52 +399,52 @@ namespace SPC700Functions {
 
 	template <int step = 0>
 	static void MOV_5D(SPC700& cpu, bool skipped) {
-		cpu.regs.X = (uint8_t)cpu.regs.A;
+		cpu.regs.X = (u8)cpu.regs.A;
 	}
 
 	template <int step = 0>
 	static void MOV_7D(SPC700& cpu, bool skipped) {
-		cpu.regs.A = (uint8_t)cpu.regs.X;
+		cpu.regs.A = (u8)cpu.regs.X;
 	}
 
 	template <int step = 0>
 	static void MOV_Operand_To_Y(SPC700& cpu, bool skipped) {
-		cpu.regs.Y = (uint8_t)cpu.BufferOperand;
+		cpu.regs.Y = (u8)cpu.BufferOperand;
 	}
 
 	template <int step = 0>
 	static void MOV_8F(SPC700& cpu, bool skipped) {
-		cpu.BufferOperand = (uint8_t)cpu.regs.A;
+		cpu.BufferOperand = (u8)cpu.regs.A;
 	}
 
 	template <int step = 0>
 	static void MOV_9D(SPC700& cpu, bool skipped) {
-		cpu.regs.X = (uint8_t)cpu.regs.S;
+		cpu.regs.X = (u8)cpu.regs.S;
 	}
 
 	template <int step = 0>
 	static void MOV_BD(SPC700& cpu, bool skipped) {
-		cpu.regs.S = (uint8_t)cpu.regs.X;
+		cpu.regs.S = (u8)cpu.regs.X;
 	}
 
 	template <int step = 0>
 	static void MOV_DD(SPC700& cpu, bool skipped) {
-		cpu.regs.A = (uint8_t)cpu.regs.Y;
+		cpu.regs.A = (u8)cpu.regs.Y;
 	}
 
 	template <int step = 0>
 	static void MOV_FD(SPC700& cpu, bool skipped) {
-		cpu.regs.Y = (uint8_t)cpu.regs.A;
+		cpu.regs.Y = (u8)cpu.regs.A;
 	}
 
 	template <int step = 0>
 	static void MOV_Operand_To_A(SPC700& cpu, bool skipped) {
-		cpu.regs.A = (uint8_t)cpu.BufferOperand;
+		cpu.regs.A = (u8)cpu.BufferOperand;
 	}
 
 	template <int step = 0>
 	static void MOV_Operand_To_X(SPC700& cpu, bool skipped) {
-		cpu.regs.X = (uint8_t)cpu.BufferOperand;
+		cpu.regs.X = (u8)cpu.BufferOperand;
 	}
 
 	template <int code = 0, int step = 0, SubFunc func = SubFunc::None, bool pc_increment = false>
@@ -487,7 +487,7 @@ namespace SPC700Functions {
 
 	template <Bitwise bitwise = Bitwise::OR, typename ApplyTo, typename With, SubFunc func = SubFunc::None, bool increment_pc = false>
 	static void BITWISE(SPC700& cpu, bool skipped) {
-		Word val = 0x00;
+		u16 val = 0x00;
 		if constexpr (increment_pc) {
 			cpu.regs.PC++;
 		}
@@ -498,7 +498,7 @@ namespace SPC700Functions {
 		if constexpr (std::is_same_v<ApplyTo, Value::X>) { val = cpu.regs.X & 0xFF; }
 		if constexpr (std::is_same_v<ApplyTo, Value::Y>) { val = cpu.regs.Y & 0xFF; }
 
-		Byte with;
+		u8 with;
 		if constexpr (std::is_same_v<With, Value::Operand>)  { with = cpu.BufferOperand & 0xFF; }
 		if constexpr (std::is_same_v<With, Value::Operand1>) { with = cpu.BufferOperand1 & 0xFF; }
 		if constexpr (std::is_same_v<With, Value::X>) { with = cpu.regs.X & 0xFF; }
@@ -532,33 +532,33 @@ namespace SPC700Functions {
 		}
 
 		if (bitwise == Bitwise::ADC || bitwise == Bitwise::SBC) {
-			cpu.BufferTmp = (uint32_t)(val) + (uint32_t)(with) + (uint32_t)(cpu.get_flag_C());
+			cpu.BufferTmp = (u32)(val) + (u32)(with) + (u32)(cpu.get_flag_C());
 			if (cpu.BufferTmp > 0xFF) {
 				cpu.set_flag_C();
 			} else {
 				cpu.clear_flag_C();
 			}
-			if ((uint8_t)(cpu.BufferTmp) == 0x00) {
+			if ((u8)(cpu.BufferTmp) == 0x00) {
 				cpu.set_flag_Z();
 			} else {
 				cpu.clear_flag_Z();
 			}
-			if ((val ^ with ^ (uint8_t)(cpu.BufferTmp)) & 0x10) {
+			if ((val ^ with ^ (u8)(cpu.BufferTmp)) & 0x10) {
 				cpu.set_flag_H();
 			} else {
 				cpu.clear_flag_H();
 			}
-			if (~(val ^ with) & (val ^ (uint8_t)(cpu.BufferTmp)) & 0x80) {
+			if (~(val ^ with) & (val ^ (u8)(cpu.BufferTmp)) & 0x80) {
 				cpu.set_flag_V();
 			} else {
 				cpu.clear_flag_V();
 			}
-			if ((uint8_t)cpu.BufferTmp & 0x80) {
+			if ((u8)cpu.BufferTmp & 0x80) {
 				cpu.set_flag_N();
 			} else {
 				cpu.clear_flag_N();
 			}
-			val = (uint8_t)cpu.BufferTmp;
+			val = (u8)cpu.BufferTmp;
 			
 		}
 
@@ -594,7 +594,7 @@ namespace SPC700Functions {
 	static void DoJump(SPC700& cpu, bool skipped) {
 		switch(step) {
 		case 1:
-			cpu.BufferAddress = cpu.regs.PC + (int8_t)(cpu.BufferOperand);
+			cpu.BufferAddress = cpu.regs.PC + (i8)(cpu.BufferOperand);
 			cpu.regs.PC = (get_hi(cpu.regs.PC) << 8) | get_lo(cpu.BufferAddress);
 			break;
 		case 2:
@@ -760,7 +760,7 @@ namespace SPC700Functions {
 	}
 
 	static void OR1Neq(SPC700& cpu, bool skipped) {
-		Byte bit = cpu.BufferAddress >> 13;
+		u8 bit = cpu.BufferAddress >> 13;
 		bool flag = cpu.get_flag_C();
 		if (flag || (cpu.BufferOperand & (1 << bit)) != 0) {
 			cpu.set_flag_C();
@@ -770,7 +770,7 @@ namespace SPC700Functions {
 	}
 
 	static void OR1Eq(SPC700& cpu, bool skipped) {
-		Byte bit = cpu.BufferAddress >> 13;
+		u8 bit = cpu.BufferAddress >> 13;
 		bool flag = cpu.get_flag_C();
 		if (flag || (cpu.BufferOperand & (1 << bit)) == 0) {
 			cpu.set_flag_C();
@@ -780,7 +780,7 @@ namespace SPC700Functions {
 	}
 
 	static void EOR1(SPC700& cpu, bool skipped) {
-		Byte bit = cpu.BufferAddress >> 13;
+		u8 bit = cpu.BufferAddress >> 13;
 		bool flag = cpu.get_flag_C();
 		if (flag ^ (cpu.BufferOperand & (1 << bit)) != 0) {
 			cpu.set_flag_C();
@@ -790,7 +790,7 @@ namespace SPC700Functions {
 	}
 
 	static void AND1Neq(SPC700& cpu, bool skipped) {
-		Byte bit = cpu.BufferAddress >> 13;
+		u8 bit = cpu.BufferAddress >> 13;
 		bool flag = cpu.get_flag_C();
 		if (flag && (cpu.BufferOperand & (1 << bit)) != 0) {
 			cpu.set_flag_C();
@@ -800,7 +800,7 @@ namespace SPC700Functions {
 	}
 
 	static void AND1Eq(SPC700& cpu, bool skipped) {
-		Byte bit = cpu.BufferAddress >> 13;
+		u8 bit = cpu.BufferAddress >> 13;
 		bool flag = cpu.get_flag_C();
 		if (flag && (cpu.BufferOperand & (1 << bit)) == 0) {
 			cpu.set_flag_C();
@@ -810,7 +810,7 @@ namespace SPC700Functions {
 	}
 
 	static void MOV1_AA(SPC700& cpu, bool skipped) {
-		Byte bit = cpu.BufferAddress >> 13;
+		u8 bit = cpu.BufferAddress >> 13;
 		if ((cpu.BufferOperand & (1 << bit)) != 0) {
 			cpu.set_flag_C();
 		} else {
@@ -819,7 +819,7 @@ namespace SPC700Functions {
 	}
 
 	static void MOV1_CA(SPC700& cpu, bool skipped) {
-		Byte bit = cpu.BufferAddress >> 13;
+		u8 bit = cpu.BufferAddress >> 13;
 		if (cpu.get_flag_C()) {
 			cpu.BufferOperand = cpu.BufferOperand | (1 << bit);
 		} else {
@@ -828,7 +828,7 @@ namespace SPC700Functions {
 	}
 
 	static void NOT1(SPC700& cpu, bool skipped) {
-		Byte bit = cpu.BufferAddress >> 13;
+		u8 bit = cpu.BufferAddress >> 13;
 		cpu.BufferOperand = cpu.BufferOperand ^ (1 << bit);
 	}
 
@@ -869,8 +869,8 @@ namespace SPC700Functions {
 			cpu.BufferJump = ((cpu.regs.A & 0xFF) != cpu.BufferOperand);
 			break;
 		case 2:
-			cpu.BufferAddress = cpu.regs.PC + (int8_t)(cpu.BufferOperand);
-			cpu.regs.PC = (get_hi(cpu.regs.PC) << 8) | (uint8_t)(get_lo(cpu.BufferAddress));
+			cpu.BufferAddress = cpu.regs.PC + (i8)(cpu.BufferOperand);
+			cpu.regs.PC = (get_hi(cpu.regs.PC) << 8) | (u8)(get_lo(cpu.BufferAddress));
 			break;
 		case 3:
 			cpu.regs.PC = (get_hi(cpu.BufferAddress) << 8) | (get_lo(cpu.regs.PC));
@@ -886,8 +886,8 @@ namespace SPC700Functions {
 			cpu.BufferJump = (cpu.BufferOperand != 0);
 			break;
 		case 2:
-			cpu.BufferAddress = cpu.regs.PC + (int8_t)(cpu.BufferOperand);
-			cpu.regs.PC = (get_hi(cpu.regs.PC) << 8) | (uint8_t)(get_lo(cpu.BufferAddress));
+			cpu.BufferAddress = cpu.regs.PC + (i8)(cpu.BufferOperand);
+			cpu.regs.PC = (get_hi(cpu.regs.PC) << 8) | (u8)(get_lo(cpu.BufferAddress));
 			break;
 		case 3:
 			cpu.regs.PC = (get_hi(cpu.BufferAddress) << 8) | (get_lo(cpu.regs.PC));
@@ -904,8 +904,8 @@ namespace SPC700Functions {
 			cpu.BufferJump = (cpu.regs.Y != 0);
 			break;
 		case 2:
-			cpu.BufferAddress = cpu.regs.PC + (int8_t)(cpu.BufferOperand);
-			cpu.regs.PC = (get_hi(cpu.regs.PC) << 8) | (uint8_t)(get_lo(cpu.BufferAddress));
+			cpu.BufferAddress = cpu.regs.PC + (i8)(cpu.BufferOperand);
+			cpu.regs.PC = (get_hi(cpu.regs.PC) << 8) | (u8)(get_lo(cpu.BufferAddress));
 			break;
 		case 3:
 			cpu.regs.PC = (get_hi(cpu.BufferAddress) << 8) | (get_lo(cpu.regs.PC));
@@ -938,7 +938,7 @@ namespace SPC700Functions {
 
 	template <int step>
 	static void INCW(SPC700& cpu, bool skipped) {
-		Byte value = cpu.BufferOperand & 0xFF;
+		u8 value = cpu.BufferOperand & 0xFF;
 		switch(step) {
 		case 1:
 			cpu.BufferOverflow = (value == 0xFF);
@@ -991,15 +991,15 @@ namespace SPC700Functions {
 			tmp_r = cpu.BufferOperand16;
 		}
 
-		int tmp = (uint32_t)(cpu.regs.A & 0xFF) + (uint32_t)(get_lo(tmp_r)) + (subw ? 1 : 0);
+		int tmp = (u32)(cpu.regs.A & 0xFF) + (u32)(get_lo(tmp_r)) + (subw ? 1 : 0);
 		if (tmp > 0xFF) {
 			cpu.set_flag_C();
 		} else {
 			cpu.clear_flag_C();
 		}
-		cpu.regs.A = (uint8_t)(tmp);
+		cpu.regs.A = (u8)(tmp);
 
-		tmp = (uint32_t)(cpu.regs.Y & 0xFF) + (uint32_t)(get_hi(tmp_r)) + (uint32_t)(cpu.get_flag_C());
+		tmp = (u32)(cpu.regs.Y & 0xFF) + (u32)(get_hi(tmp_r)) + (u32)(cpu.get_flag_C());
 
 		if (tmp > 0xFF) {
 			cpu.set_flag_C();
@@ -1007,25 +1007,25 @@ namespace SPC700Functions {
 			cpu.clear_flag_C();
 		}
 
-		if (((cpu.regs.Y & 0xFF) ^ get_hi(tmp_r) ^ (uint8_t)(tmp)) & 0x10) {
+		if (((cpu.regs.Y & 0xFF) ^ get_hi(tmp_r) ^ (u8)(tmp)) & 0x10) {
 			cpu.set_flag_H();
 		} else {
 			cpu.clear_flag_H();
 		}
 
-		if (~((cpu.regs.Y & 0xFF) ^ get_hi(tmp_r)) & ((cpu.regs.Y & 0xFF) ^ (uint8_t)(tmp)) & 0x80) {
+		if (~((cpu.regs.Y & 0xFF) ^ get_hi(tmp_r)) & ((cpu.regs.Y & 0xFF) ^ (u8)(tmp)) & 0x80) {
 			cpu.set_flag_V();
 		} else {
 			cpu.clear_flag_V();
 		}
 
-		if ((uint8_t)(tmp) & 0x80) {
+		if ((u8)(tmp) & 0x80) {
 			cpu.set_flag_N();
 		} else {
 			cpu.clear_flag_N();
 		}
 
-		cpu.regs.Y = (uint8_t)(tmp);
+		cpu.regs.Y = (u8)(tmp);
 
 		if (ya(cpu) == 0x0000) {
 			cpu.set_flag_Z();

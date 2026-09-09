@@ -1,13 +1,14 @@
 #include "sdsp.hpp"
 #include "apubus.hpp"
+#include <cmath>
 
-void Voice::mem_write(Word address, Byte value) {
+void Voice::mem_write(u16 address, u8 value) {
 	if (bus) {
 		bus->aram_write(address, value);
 	}
 }
 
-Byte Voice::mem_read(Word address) {
+u8 Voice::mem_read(u16 address) {
 	if (bus) {
 		return bus->aram_read(address);
 	} else {
@@ -24,8 +25,8 @@ void Voice::decode_brr_block() {
 	end_flag  = (header & 0x01) != 0;
 
 	for (int i = 0; i < 16; i++) {
-		Byte data = mem_read(current_brr_address + 1 + i / 2);
-		Byte nibble;
+		u8 data = mem_read(current_brr_address + 1 + i / 2);
+		u8 nibble;
 		if ((i & 1) == 0) {
 			nibble = data >> 4;
 		} else {
@@ -84,8 +85,8 @@ StereoSample Voice::output() {
 	}
 
 	return {
-		static_cast<int16_t>(final_sample * voll / 128),
-		static_cast<int16_t>(final_sample * volr / 128)
+		static_cast<i16>(final_sample * voll / 128),
+		static_cast<i16>(final_sample * volr / 128)
 	};
 }
 
@@ -232,17 +233,19 @@ void Voice::apply_envelope() {
 
 void Voice::tick(Sample modulation, Sample noise) {
 	if (!active) {
+		//std::cout << "VOICE INACTIVE\n";
 		current_sample = 0;
 		return;
 	}
 	
-	uint16_t pitch = ((pitchr & 0x3F) << 8) | pitchl;
-	uint32_t step = pitch;
+	u16 pitch = ((pitchr & 0x3F) << 8) | pitchl;
+	u32 step = pitch;
 	if (pitch_mod_enabled) {
-		int32_t factor = (modulation >> 4) + 0x400;
+		i32 factor = (modulation >> 4) + 0x400;
 		step = (pitch * factor) >> 10;
 	}
 	pitch_counter += step;
+	//std::cout << "VOICE PITCH COUNTER " << pitch_counter << "\n";
 
 	while (pitch_counter >= 0x1000) {
 		pitch_counter -= 0x1000;

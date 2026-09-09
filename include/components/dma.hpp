@@ -27,12 +27,12 @@ constexpr std::array<TransferUnit, 8> transfer_units = {
 };
 
 struct Unit {
-	Address a_bus = 0; // This is the A-Bus address of the starting unit value, DMA reads the entirety of the unit
-	uint8_t b_bus = 0; // Whatever bbad is for the HDMA channel
+	u32 a_bus = 0; // This is the A-Bus address of the starting unit value, DMA reads the entirety of the unit
+	u8 b_bus = 0; // Whatever bbad is for the HDMA channel
 	bool transfer_this = false; // Should that unit be transferred?
 	int unit_type = 0; // Used to know the actual unit type (on the DMA controller side)
 	int cycle_penalty = 0; // DMA controller calculates this cycle penalty value (either zero or non-zero based on descriptor loading)
-	Byte ntrl_after = 0; // CPU-visible NLTR (0x43xA) value once this scanline's line has been consumed
+	u8 ntrl_after = 0; // CPU-visible NLTR (0x43xA) value once this scanline's line has been consumed
 };
 
 constexpr Unit default_unit = Unit{0, 0, false, 0, 0, 0};
@@ -48,7 +48,7 @@ public:
 		return false;
 	}
 
-	Byte read(int register_number) {
+	u8 read(int register_number) {
 		switch (register_number) {
 			case 0x0: return dmap; break;
 			case 0x1: return bbad; break;
@@ -65,7 +65,7 @@ public:
 		return unused;
 	}
 
-	void write(int register_number, Byte value) {
+	void write(int register_number, u8 value) {
 		switch (register_number) {
 			case 0x0: set_dmap(value); break;
 			case 0x1: set_bbad(value); break;
@@ -82,7 +82,7 @@ public:
 		}
 	}
 
-	void set_dmap(Byte value) {
+	void set_dmap(u8 value) {
 		transfer_direction = (value & 0x80) != 0;
 		addressing_mode = (value & 0x40) != 0;
 		a_bus_address_step = (value >> 3) & 3;
@@ -91,51 +91,51 @@ public:
 		dmap = value;
 	}
 
-	void set_bbad(Byte value) {
+	void set_bbad(u8 value) {
 		bbad = value;
 	}
 
-	void set_a1tl(Byte value) {
+	void set_a1tl(u8 value) {
 		a1_address = (get_hi(a1_address) << 8) | value;
 		a1tl = value;
 	}
 
-	void set_a1th(Byte value) {
+	void set_a1th(u8 value) {
 		a1_address = (value << 8) | (get_lo(a1_address));
 		a1th = value;
 	}
 
-	void set_a1b(Byte value) {
+	void set_a1b(u8 value) {
 		a1_bank = value;
 		a1b = value;
 	}
 
-	void set_dasl(Byte value) {
+	void set_dasl(u8 value) {
 		dasl = value;
 		indirect_address = (get_hi(indirect_address) << 8) | value;
 	}
 
-	void set_dash(Byte value) {
+	void set_dash(u8 value) {
 		dash = value;
 		indirect_address = (value << 8) | get_lo(indirect_address);
 	}
 
-	void set_dasb(Byte value) {
+	void set_dasb(u8 value) {
 		dasb = value;
 		indirect_bank = value;
 	}
 
-	void set_a2al(Byte value) {
+	void set_a2al(u8 value) {
 		table_address = (get_hi(table_address) << 8) | value;
 		a2al = value;
 	}
 
-	void set_a2ah(Byte value) {
+	void set_a2ah(u8 value) {
 		table_address = (value << 8) | get_lo(table_address);
 		a2ah = value;
 	}
 
-	void set_ntrl(Byte value) {
+	void set_ntrl(u8 value) {
 		repeat = (value & 0x80) != 0;
 		lines_to_transfer = value & 0x7F;
 		if (lines_to_transfer == 0) {
@@ -173,7 +173,7 @@ public:
 		a1_address--;
 	}
 
-	void set_table_address(Word value) {
+	void set_table_address(u16 value) {
 		table_address = value;
 		a2al = get_lo(value);
 		a2ah = get_hi(value);
@@ -187,22 +187,22 @@ public:
 		set_table_address(table_address + 1);
 	}
 
-	void increment_a_bus_address(Address& addr) {
-		uint8_t bank = (addr >> 16) & 0xFF;
-		uint16_t address = addr & 0xFFFF;
+	void increment_a_bus_address(u32& addr) {
+		u8 bank = (addr >> 16) & 0xFF;
+		u16 address = addr & 0xFFFF;
 		address++;
 		addr = (bank << 16) | address;
 	}
 
-	void decrement_a_bus_address(Address& addr) {
-		uint8_t bank = (addr >> 16) & 0xFF;
-		uint16_t address = addr & 0xFFFF;
+	void decrement_a_bus_address(u32& addr) {
+		u8 bank = (addr >> 16) & 0xFF;
+		u16 address = addr & 0xFFFF;
 		address--;
 		addr = (bank << 16) | address;
 	}
 
 
-	Address get_a_bus() {
+	u32 get_a_bus() {
 		return (a1_bank << 16) | a1_address;
 	}
 
@@ -212,23 +212,23 @@ public:
 	    return transfer_direction;
 	}
 
-	Byte get_a_bus_address_step() const {
+	u8 get_a_bus_address_step() const {
 	    return a_bus_address_step;
 	}
 
-	Byte get_transfer_unit_select() const {
+	u8 get_transfer_unit_select() const {
 	    return transfer_unit_select;
 	}
 
-	Byte get_bbad() const {
+	u8 get_bbad() const {
 	    return bbad;
 	}
 
-	uint32_t get_byte_counter() const {
+	u32 get_byte_counter() const {
 	    return (dash << 8) | dasl;
 	}
 
-	void update_das(uint32_t byte_counter) {
+	void update_das(u32 byte_counter) {
 		dasl = byte_counter & 0xFF;
 		dash = (byte_counter >> 8) & 0xFF;
 	}
@@ -236,7 +236,7 @@ public:
 	bool load_descriptor();
 	Unit do_transfer();
 
-	void push_unit(Address a_bus, uint8_t b_bus, bool transfer_this, int unit_type, int cycle_penalty, Byte ntrl_after) {
+	void push_unit(u32 a_bus, u8 b_bus, bool transfer_this, int unit_type, int cycle_penalty, u8 ntrl_after) {
 		hdma_units.push_back(Unit{a_bus, b_bus, transfer_this, unit_type, cycle_penalty, ntrl_after});
 	}
 
@@ -258,12 +258,12 @@ public:
 		this->bus = bus;
 	}
 
-	Byte read_a_bus();
+	u8 read_a_bus();
 
 	bool new_indirect_address = false;
-	Word prev_indirect_address = 0x00;
+	u16 prev_indirect_address = 0x00;
 
-	CycleCount reload_penalty = 0;
+	i64 reload_penalty = 0;
 
 private:
 
@@ -271,21 +271,21 @@ private:
 
 	std::deque<Unit> hdma_units {};
 
-	Byte dmap = 0xFF; // transfer direction, addressing mode, a-bus address step, transfer unit select (GPDMA and HDMA)
-	Byte bbad = 0xFF; // b-bus address, mapped to 0x2100 and 0x21FF -> 0x2100h + BBAD
-	Byte a1tl = 0xFF; // HDMA table start address (low) or DMA current address (low)
-	Byte a1th = 0xFF; // same, but high
-	Byte a1b  = 0xFF; // gives bank
+	u8 dmap = 0xFF; // transfer direction, addressing mode, a-bus address step, transfer unit select (GPDMA and HDMA)
+	u8 bbad = 0xFF; // b-bus address, mapped to 0x2100 and 0x21FF -> 0x2100h + BBAD
+	u8 a1tl = 0xFF; // HDMA table start address (low) or DMA current address (low)
+	u8 a1th = 0xFF; // same, but high
+	u8 a1b  = 0xFF; // gives bank
 
 	bool transfer_direction = true; // 0 = A:CPU to B:I/O, 1=B:I/O to A:CPU (derived from dmap=0xFF)
 	bool addressing_mode = true; // 0 = direct table, 1 = indirect table (HDMA only) (derived from dmap=0xFF)
-	Byte a_bus_address_step = 3; // 0 = increment, 2 = decrement, 1/3 = fixed (derived from dmap=0xFF)
-	Byte transfer_unit_select = 7; // from the pattern table (derived from dmap=0xFF)
+	u8 a_bus_address_step = 3; // 0 = increment, 2 = decrement, 1/3 = fixed (derived from dmap=0xFF)
+	u8 transfer_unit_select = 7; // from the pattern table (derived from dmap=0xFF)
 
-	Byte  a1_bank = 0xFF;
-	Word  a1_address = 0xFFFF;
-	Byte& hdma_table_bank   = a1_bank;
-	Word& hdma_table_reload = a1_address;
+	u8  a1_bank = 0xFF;
+	u16  a1_address = 0xFFFF;
+	u8& hdma_table_bank   = a1_bank;
+	u16& hdma_table_reload = a1_address;
 
 	// a1tl, a1th, a1b in GPDMA and HDMA
 	// In GPDMA: 23-16 gives constant CPU-BUs Data Address Bank and 15-0 gives the data address which is either increment/decremented or kept fixed
@@ -293,35 +293,35 @@ private:
 	// In HDMA: table bank is the bank number for a2al and a2ah, effectively acting as a2b as well as a1b
 	// In HDMA: table address is a constant and acts as the reload value for a2al and a2ah
 
-	Byte dasl = 0xFF; // indirect HDMA address or DMA byte counter (low)
-	Byte dash = 0xFF; // same as above, but high
-	Byte dasb = 0xFF; // indirect HDMA Address bank
+	u8 dasl = 0xFF; // indirect HDMA address or DMA byte counter (low)
+	u8 dash = 0xFF; // same as above, but high
+	u8 dasb = 0xFF; // indirect HDMA Address bank
 
-	uint32_t byte_counter = 0; // not set in registers, set when GPDMA begins
-	Byte indirect_bank = 0xFF;
-	Word indirect_address = 0xFFFF;
+	u32 byte_counter = 0; // not set in registers, set when GPDMA begins
+	u8 indirect_bank = 0xFF;
+	u16 indirect_address = 0xFFFF;
 
 	// In GPDMA: do not use 23-16, 15-0 acts as a byte counter (NOT unit-counter, just a BYTE counter) -> 0 means 10000h
 	// In direct HDMA: 23-0 is not used (data is read directly from table)
 	// In indirect HDMA: 23-16 is set by software (current CPU-Bus data address bank), and 16-0 is the current CPU-Bus data address automatically loaded from the table
 
-	Byte a2al = 0xFF; // HDMA table current address (low)
-	Byte a2ah = 0xFF; // HDMA table current address (high)
+	u8 a2al = 0xFF; // HDMA table current address (low)
+	u8 a2ah = 0xFF; // HDMA table current address (high)
 
-	Word table_address = 0xFFFF;
+	u16 table_address = 0xFFFF;
 
 	// In GPDMA: not used/
 	// In HDMA: the current table address bank is taken from a1b, and 15-0 is the current table address that is reloaded from a1tl and a1th
 
-	Byte ntrl = 0xFF; // HDMA line-counter from the current table entry
+	u8 ntrl = 0xFF; // HDMA line-counter from the current table entry
 	
 	bool repeat = true; // derived from ntrl=0xFF
-	Byte lines_to_transfer = 128; // derived from ntrl=0xFF (0x7F count wraps to 128)
+	u8 lines_to_transfer = 128; // derived from ntrl=0xFF (0x7F count wraps to 128)
 
 	// In GPDMA: not used
 	// In HDMA: 7 is the repeat flag (loaded from table), 6-0 number of lines to be transferred (decremented per scanline)
 
-	Byte unused = 0xFF; // an unused byte corresponding to 43xB, but can be used as a fast RAM location
+	u8 unused = 0xFF; // an unused byte corresponding to 43xB, but can be used as a fast RAM location
 
 	// Below are handled in DMA class itself
 	// 43xC to 43xE are open bus
@@ -343,15 +343,15 @@ enum class GPDMAState {
 
 struct GPDMA {
 	bool transfer_direction = false;
-	Byte a_bus_address_step = 0;
-	Byte transfer_unit_select = 0;
-	Byte bbad = 0;
-	uint32_t byte_counter = 0;
-	uint32_t byte_tick = 0;
+	u8 a_bus_address_step = 0;
+	u8 transfer_unit_select = 0;
+	u8 bbad = 0;
+	u32 byte_counter = 0;
+	u32 byte_tick = 0;
 	DMAChannel* ch = nullptr;
 	GPDMAState state = GPDMAState::None;
 	int channel_number = 0;
-	CycleCount cycle = 0;
+	i64 cycle = 0;
 };
 
 struct HDMA {
@@ -386,8 +386,8 @@ public:
 	// GPDMA is cycle-stepped
 	void tick_gpdma();
 
-	Byte get_open_bus();
-	void set_open_bus(Byte value);
+	u8 get_open_bus();
+	void set_open_bus(u8 value);
 
 	DMAChannel* get_earliest_gpdma_channel() {
 		for (auto& ch : channels) {
@@ -407,7 +407,7 @@ public:
 		return nullptr;
 	}
 
-	void set_mdmaen(Byte value) {
+	void set_mdmaen(u8 value) {
 		int ch = 0;
 
 		mdmaen_value = value;
@@ -433,7 +433,7 @@ public:
 		}
 	}
 
-	void set_hdmaen(Byte value) {
+	void set_hdmaen(u8 value) {
 		int ch = 0;
 
 		hdmaen_value = value;
@@ -475,8 +475,8 @@ public:
 		return channel_number;
 	}
 
-	Byte communication_read(SNESAddress address) {
-		Byte fetched = get_open_bus();
+	u8 communication_read(SNESAddress address) {
+		u8 fetched = get_open_bus();
 
 		if (address.offset == MDMAEN_ADDRESS) {
 			fetched = mdmaen_value;
@@ -498,7 +498,7 @@ public:
 		return fetched;
 	}
 
-	void communication_write(SNESAddress address, Byte value) {
+	void communication_write(SNESAddress address, u8 value) {
 		set_open_bus(value);
 		if (address.offset >= 0x4300 && address.offset <= 0x437F) {
 			int channel_number  = get_channel_number(address);
@@ -551,38 +551,38 @@ public:
 
 	// Unimplemented to allow this to be a Component*
 
-	void add_cycles(CycleCount cycles) override { return; }
+	void add_cycles(i64 cycles) override { return; }
 	void tick_component() override { return; }
-	CycleCount get_cycle() override { return 0; }
-	TickCount get_tick() override { return 0; }
+	i64 get_cycle() override { return 0; }
+	i64 get_tick() override { return 0; }
 
-	Byte read(Address addr) override { return 0; }
-	void write(Address addr, Byte value) override { return; }
+	u8 read(u32 addr) override { return 0; }
+	void write(u32 addr, u8 value) override { return; }
 
-	void connect_cpu_cycle_counter(CycleCount* cpu_cycle) {
+	void connect_cpu_cycle_counter(i64* cpu_cycle) {
 		this->cpu_cycle = cpu_cycle;
 	}
 
-	uint8_t get_b_bus(Byte bbad, Byte transfer_unit_select, uint32_t byte_tick);
+	u8 get_b_bus(u8 bbad, u8 transfer_unit_select, u32 byte_tick);
 
-	Byte dma_read(SNESAddress addr);
-	void dma_write(SNESAddress addr, Byte value);
+	u8 dma_read(SNESAddress addr);
+	void dma_write(SNESAddress addr, u8 value);
 
-	Byte a_bus_read(SNESAddress addr) {
+	u8 a_bus_read(SNESAddress addr) {
 		if (is_forbidden_a_bus_address(addr)) {
 			return get_open_bus();
 		}
 		return dma_read(addr);
 	}
 
-	void a_bus_write(SNESAddress addr, Byte value) {
+	void a_bus_write(SNESAddress addr, u8 value) {
 		if (is_forbidden_a_bus_address(addr)) {
 			return;
 		}
 		return dma_write(addr, value);
 	}
 
-	Byte read_from_a_bus(Address addr) {
+	u8 read_from_a_bus(u32 addr) {
 		SNESAddress address = to_snes_address(addr);
 		if (is_forbidden_a_bus_address(address)) {
 			return get_open_bus();
@@ -590,29 +590,29 @@ public:
 		return dma_read(address);
 	}
 
-	Byte b_bus_read(uint8_t b_bus) {
+	u8 b_bus_read(u8 b_bus) {
 		SNESAddress addr;
 		addr.offset = 0x2100 | b_bus;
 		addr.bank = 0x00;
 		return dma_read(addr);
 	}
 
-	void b_bus_write(uint8_t b_bus, Byte value) {
+	void b_bus_write(u8 b_bus, u8 value) {
 		SNESAddress addr;
 		addr.offset = 0x2100 | b_bus;
 		addr.bank = 0x00;
 		dma_write(addr, value);
 	}
 
-	void transfer_a_to_b(Address a_bus, uint8_t b_bus) {
+	void transfer_a_to_b(u32 a_bus, u8 b_bus) {
 		SNESAddress address = to_snes_address(a_bus);
-		Byte value = a_bus_read(address);
+		u8 value = a_bus_read(address);
 		b_bus_write(b_bus, value);
 	}
 
-	void transfer_b_to_a(uint8_t b_bus, Address a_bus) {
+	void transfer_b_to_a(u8 b_bus, u32 a_bus) {
 		SNESAddress address = to_snes_address(a_bus);
-		Byte value = b_bus_read(b_bus);
+		u8 value = b_bus_read(b_bus);
 		a_bus_write(address, value);
 	}
 
@@ -625,14 +625,14 @@ public:
 	}
 
 private:
-	CycleCount* cpu_cycle = nullptr;
+	i64* cpu_cycle = nullptr;
 	DMAChannel channels[8] {};
 	Bus* bus = nullptr;
 	PPU* ppu = nullptr;
 	Ricoh5A22* cpu = nullptr;
 
-	Byte mdmaen_value = 0; // raw last-written value, for readback of $420B
-	Byte hdmaen_value = 0; // raw last-written value, for readback of $420C
+	u8 mdmaen_value = 0; // raw last-written value, for readback of $420B
+	u8 hdmaen_value = 0; // raw last-written value, for readback of $420C
 
 	GPDMA gpdma;
 	HDMA hdma;

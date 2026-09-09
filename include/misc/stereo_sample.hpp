@@ -1,7 +1,8 @@
 #pragma once
 #include <cstdint>
+#include "common.hpp"
 
 struct StereoSample {
-	int16_t left;
-	int16_t right;
+	i16 left;
+	i16 right;
 };

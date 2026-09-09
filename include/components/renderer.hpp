@@ -10,8 +10,8 @@
 struct ControllerState {
 
 	bool buttons[10] {};
-	int16_t axis_x = 0;
-	int16_t axis_y = 0;
+	i16 axis_x = 0;
+	i16 axis_y = 0;
 
 	bool connected = false;
 };
@@ -118,7 +118,7 @@ public:
 		SDL_free(ids);
 	}
 
-	Byte get_joypad(uint16_t offset) {
+	u8 get_joypad(u16 offset) {
 		switch (offset) {
 			case JOY1L_ADDRESS: return joy1l;
 			case JOY1H_ADDRESS: return joy1h;
@@ -129,7 +129,7 @@ public:
 	}
 
 	// This displays the main screen
-	void display_framebuffer(std::vector<uint32_t>& framebuffer) {
+	void display_framebuffer(std::vector<u32>& framebuffer) {
 		int window_width;
 		int window_height;
 
@@ -147,7 +147,7 @@ public:
 			texture,
 			nullptr,
 			framebuffer.data(),
-			screen_width * sizeof(uint32_t)
+			screen_width * sizeof(u32)
 		);
 
 		SDL_RenderClear(renderer);
@@ -170,7 +170,7 @@ public:
 		return;
 	}
 
-	void display_oam_view(std::vector<uint32_t>& oam_buffer) {
+	void display_oam_view(std::vector<u32>& oam_buffer) {
 		if constexpr (DEBUG_WINDOW) {
 			int window_width;
 			int window_height;
@@ -189,7 +189,7 @@ public:
 				oam_texture,
 				nullptr,
 				oam_buffer.data(),
-				oam_view_width * sizeof(uint32_t)
+				oam_view_width * sizeof(u32)
 			);
 
 			SDL_SetRenderDrawColor(oam_renderer, 0, 0, 0, 255);
@@ -214,11 +214,11 @@ public:
 		return;
 	}
 
-	void display_separate_framebuffers(std::vector<uint32_t>& bg1,
-									   std::vector<uint32_t>& bg2,
-									   std::vector<uint32_t>& bg3,
-									   std::vector<uint32_t>& bg4,
-									   std::vector<uint32_t>& obj) {
+	void display_separate_framebuffers(std::vector<u32>& bg1,
+									   std::vector<u32>& bg2,
+									   std::vector<u32>& bg3,
+									   std::vector<u32>& bg4,
+									   std::vector<u32>& obj) {
 
 		//
 		if constexpr (DEBUG_WINDOW) {
@@ -238,11 +238,11 @@ public:
 			float w = screen_width  * scale;
 			float h = screen_height * scale;
 
-			SDL_UpdateTexture(bg1_tex, nullptr, bg1.data(), screen_width * sizeof(uint32_t));
-			SDL_UpdateTexture(bg2_tex, nullptr, bg2.data(), screen_width * sizeof(uint32_t));
-			SDL_UpdateTexture(bg3_tex, nullptr, bg3.data(), screen_width * sizeof(uint32_t));
-			SDL_UpdateTexture(bg4_tex, nullptr, bg4.data(), screen_width * sizeof(uint32_t));
-			SDL_UpdateTexture(obj_tex, nullptr, obj.data(), screen_width * sizeof(uint32_t));
+			SDL_UpdateTexture(bg1_tex, nullptr, bg1.data(), screen_width * sizeof(u32));
+			SDL_UpdateTexture(bg2_tex, nullptr, bg2.data(), screen_width * sizeof(u32));
+			SDL_UpdateTexture(bg3_tex, nullptr, bg3.data(), screen_width * sizeof(u32));
+			SDL_UpdateTexture(bg4_tex, nullptr, bg4.data(), screen_width * sizeof(u32));
+			SDL_UpdateTexture(obj_tex, nullptr, obj.data(), screen_width * sizeof(u32));
 			
 			SDL_SetRenderDrawColor(debug_renderer, 0, 0, 0, 255);
 			SDL_RenderClear(debug_renderer);
@@ -266,7 +266,7 @@ public:
 		}
 	}
 
-	void update_controller(ControllerState& controller, Byte& joyl, Byte& joyh, bool keyboard = false) {
+	void update_controller(ControllerState& controller, u8& joyl, u8& joyh, bool keyboard = false) {
 	    bool up    = controller.axis_y < -AXIS_THRESHOLD;
 	    bool down  = controller.axis_y >  AXIS_THRESHOLD;
 	    bool left  = controller.axis_x < -AXIS_THRESHOLD;
@@ -418,7 +418,7 @@ public:
 
 	bool running = true;
 
-	std::vector<uint32_t> framebuffer;
+	std::vector<u32> framebuffer;
 
 private:
 	// Main window
@@ -450,16 +450,16 @@ private:
 	static constexpr int oam_view_height = 8  * oam_cell_size;
 
 	bool closed = true;
-	Byte joy1l, joy1h = 0x00;
-	Byte joy2l, joy2h = 0x00;
+	u8 joy1l, joy1h = 0x00;
+	u8 joy2l, joy2h = 0x00;
 
 	SDL_Joystick* joysticks[2] = { nullptr, nullptr };
 	ControllerState controllers[2];
 
 	bool gamepad_buttons[10]{};
 
-	int16_t axis_x = 0;
-	int16_t axis_y = 0;
+	i16 axis_x = 0;
+	i16 axis_y = 0;
 
 	static constexpr int AXIS_THRESHOLD = 16000;
 

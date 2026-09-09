@@ -3,13 +3,13 @@
 
 // SDSP
 
-void SDSP::mem_write(Word address, Byte value) {
+void SDSP::mem_write(u16 address, u8 value) {
 	if (bus) {
 		bus->aram_write(address, value);
 	}
 }
 
-Byte SDSP::mem_read(Word address) {
+u8 SDSP::mem_read(u16 address) {
 	if (bus) {
 		return bus->aram_read(address);
 	} else {
@@ -18,11 +18,11 @@ Byte SDSP::mem_read(Word address) {
 }
 
 StereoSample SDSP::output() {
-	int32_t left = 0;
-	int32_t right = 0;
+	i32 left = 0;
+	i32 right = 0;
 
-	int32_t echo_left = 0;
-	int32_t echo_right = 0;
+	i32 echo_left = 0;
+	i32 echo_right = 0;
 
 	for (auto& v : voices) {
 		auto sample = v.output();
@@ -39,8 +39,8 @@ StereoSample SDSP::output() {
 	left  = std::clamp(left, -32768, 32767);
 	right = std::clamp(right, -32768, 32767);
 	
-	int32_t mixed_left  = (left  * mvoll) >> 7;
-	int32_t mixed_right = (right * mvolr) >> 7;
+	i32 mixed_left  = (left  * mvoll) >> 7;
+	i32 mixed_right = (right * mvolr) >> 7;
 
 	echo_left  = std::clamp(echo_left,  -32768, 32767);
 	echo_right = std::clamp(echo_right, -32768, 32767);
@@ -50,16 +50,16 @@ StereoSample SDSP::output() {
 
 	StereoSample filtered_echo = process_fir();
 
-	mixed_left += ((int32_t)(filtered_echo.left) * evoll) >> 7;
-	mixed_right += ((int32_t)(filtered_echo.right) * evolr) >> 7;
+	mixed_left += ((i32)(filtered_echo.left) * evoll) >> 7;
+	mixed_right += ((i32)(filtered_echo.right) * evolr) >> 7;
 
-	int32_t feedback_left = echo_left + (((int32_t)(filtered_echo.left) * efb) >> 7);
-	int32_t feedback_right = echo_right + (((int32_t)(filtered_echo.right) * efb) >> 7);
+	i32 feedback_left = echo_left + (((i32)(filtered_echo.left) * efb) >> 7);
+	i32 feedback_right = echo_right + (((i32)(filtered_echo.right) * efb) >> 7);
 
 	feedback_left = std::clamp(feedback_left, -32768, 32767);
 	feedback_right = std::clamp(feedback_right, -32768, 32767);
 
-	StereoSample echo_input { (int16_t)(feedback_left & ~1), (int16_t)(feedback_right & ~1) };
+	StereoSample echo_input { (i16)(feedback_left & ~1), (i16)(feedback_right & ~1) };
 
 	if (!(flg & 0x20)) {
 		write_echo_sample(echo_input);
@@ -71,16 +71,16 @@ StereoSample SDSP::output() {
 	right = std::clamp(mixed_right, -32768, 32767);
 
 	return {
-		(int16_t)left,
-		(int16_t)right
+		(i16)left,
+		(i16)right
 	};
 }
 
 void SDSP::update_noise() {
 	if (noise_counter == 0) {
 		noise_counter = envelope_period_table[noise_frequency];
-		Byte bit0 = noise_lfsr & 1;
-		Byte bit1 = (noise_lfsr >> 1) & 1;
+		u8 bit0 = noise_lfsr & 1;
+		u8 bit1 = (noise_lfsr >> 1) & 1;
 
 		noise_lfsr = (noise_lfsr >> 1) | ((bit0 ^ bit1) << 14);
 	} else {
@@ -105,4 +105,5 @@ void SDSP::tick() {
 
 	StereoSample out = output();
 	audio_buffer.push(out);
+	//std::cout << "PUSHED SAMPLE\n" << out.left << " " << out.right << "\n";;
 }

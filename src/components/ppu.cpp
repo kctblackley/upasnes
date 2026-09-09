@@ -8,12 +8,12 @@
 constexpr int DOTS_PER_LINE = 341;
 constexpr int HBLANK_DOTS = 278;
 constexpr int CPU_PAUSE = 134;
-constexpr CycleCount PPU_CYCLE = 1;
+constexpr i64 PPU_CYCLE = 1;
 
 constexpr int HDMA_INIT_DOT = 6;
 constexpr int HDMA_TRANSFER_DOT = 278;
 
-void PPU::window_mask(std::array<Pixel, 512>& scanline, bool window1_enabled, bool window2_enabled, bool window1_inverted, bool window2_inverted, Byte mask_logic, bool colour_math) {
+void PPU::window_mask(std::array<Pixel, 512>& scanline, bool window1_enabled, bool window2_enabled, bool window1_inverted, bool window2_inverted, u8 mask_logic, bool colour_math) {
 	int x = 0;
 	for (int dot = 0; dot < 512; dot += 2) {
 		bool window1_mask = window1_dots[dot];
@@ -41,7 +41,7 @@ void PPU::window_mask(std::array<Pixel, 512>& scanline, bool window1_enabled, bo
 }
 
 // Note: tile caching cannot apply here
-Pixel PPU::fetch_mode7_pixel(BG& bg, uint16_t xcounter) {
+Pixel PPU::fetch_mode7_pixel(BG& bg, u16 xcounter) {
 	int screen_x = xcounter;
 	int screen_y = vcounter - 1;
 
@@ -63,12 +63,12 @@ Pixel PPU::fetch_mode7_pixel(BG& bg, uint16_t xcounter) {
 	int pixel_x = source_x & 0x7;
 	int pixel_y = source_y & 0x7;
 
-	uint32_t tile_index = (tile_x + (tile_y * 128)) & 0x3FFF;
-	Byte tile_number = get_lo(vram.data[tile_index]);
+	u32 tile_index = (tile_x + (tile_y * 128)) & 0x3FFF;
+	u8 tile_number = get_lo(vram.data[tile_index]);
 
-	uint32_t pixel_offset = (pixel_y * 8) + pixel_x;
-	uint32_t char_word_addr = ((tile_number * 64) + pixel_offset) & 0x3FFF;
-	Byte colour = get_hi(vram.data[char_word_addr]);
+	u32 pixel_offset = (pixel_y * 8) + pixel_x;
+	u32 char_word_addr = ((tile_number * 64) + pixel_offset) & 0x3FFF;
+	u8 colour = get_hi(vram.data[char_word_addr]);
 
 	bool extbg_priority = false;
 	if (bg.layer == 2 && extbg_mode) {
@@ -76,7 +76,7 @@ Pixel PPU::fetch_mode7_pixel(BG& bg, uint16_t xcounter) {
 		colour = colour & 0x7F;
 	}
 
-	Word snes_colour = cgram.data[colour];
+	u16 snes_colour = cgram.data[colour];
 	Pixel px;
 	px.transparent = (colour == 0);
 	px.colour = snes_colour;
@@ -104,17 +104,17 @@ void PPU::render_oam_view() {
 	std::fill(oam_view_framebuffer.begin(), oam_view_framebuffer.end(), 0x000000FF);
 
 	for (int i = 0; i < 128; i++) {
-		Word tile_number = oam.data[(4 * i) + 2];
-		Word attributes  = oam.data[(4 * i) + 3];
+		u16 tile_number = oam.data[(4 * i) + 2];
+		u16 attributes  = oam.data[(4 * i) + 3];
 
 		tile_number = ((attributes & 1) << 8) | tile_number;
-		Byte palette = (attributes >> 1) & 0x7;
+		u8 palette = (attributes >> 1) & 0x7;
 
 		bool horizontal_flip = (attributes >> 6) & 1;
 		bool vertical_flip   = (attributes >> 7) & 1;
 
-		Byte high_byte = oam.data[512 + (i / 4)];
-		Byte high_byte_pair = (high_byte >> (2 * (i % 4))) & 0x3;
+		u8 high_byte = oam.data[512 + (i / 4)];
+		u8 high_byte_pair = (high_byte >> (2 * (i % 4))) & 0x3;
 		bool size = (high_byte_pair >> 1) & 1;
 
 		int width  = size ? oam.obj_size.large_width  : oam.obj_size.small_width;
@@ -155,19 +155,19 @@ void PPU::render_oam_view() {
 				int tile_index = (name_row << 4) | name_col;
 
 				bool second_base = (tile_number & 0x100) != 0;
-				Word tile_base = second_base ? oam.second_base : oam.first_base;
-				Word tile_address = (tile_base + (tile_index * 16)) & 0x7FFF;
+				u16 tile_base = second_base ? oam.second_base : oam.first_base;
+				u16 tile_address = (tile_base + (tile_index * 16)) & 0x7FFF;
 
-				Word p01 = vram.data[(tile_address + 0 + pixel_y) & 0x7FFF];
-				Word p23 = vram.data[(tile_address + 8 + pixel_y) & 0x7FFF];
+				u16 p01 = vram.data[(tile_address + 0 + pixel_y) & 0x7FFF];
+				u16 p23 = vram.data[(tile_address + 8 + pixel_y) & 0x7FFF];
 
-				Byte p0 = get_lo(p01);
-				Byte p1 = get_hi(p01);
-				Byte p2 = get_lo(p23);
-				Byte p3 = get_hi(p23);
+				u8 p0 = get_lo(p01);
+				u8 p1 = get_hi(p01);
+				u8 p2 = get_lo(p23);
+				u8 p3 = get_hi(p23);
 
 				int bit = 7 - pixel_x;
-				Byte colour = (((p0 >> bit) & 1) << 0) |
+				u8 colour = (((p0 >> bit) & 1) << 0) |
 							  (((p1 >> bit) & 1) << 1) |
 							  (((p2 >> bit) & 1) << 2) |
 							  (((p3 >> bit) & 1) << 3);
@@ -176,9 +176,9 @@ void PPU::render_oam_view() {
 					continue;
 				}
 
-				Byte cgram_index = 128 + (palette * 16) + colour;
-				Word snes_colour = cgram.data[cgram_index];
-				uint32_t rgba = convert_to_rgba(snes_colour);
+				u8 cgram_index = 128 + (palette * 16) + colour;
+				u16 snes_colour = cgram.data[cgram_index];
+				u32 rgba = convert_to_rgba(snes_colour);
 
 				int px = cell_x0 + sprite_x;
 				int py = cell_y0 + sprite_y;
@@ -200,7 +200,7 @@ void PPU::push_pixel(BG& bg, Pixel px, int& dot) {
 	}
 }
 
-Word PPU::get_tile(BG& bg, int x, int y) {
+u16 PPU::get_tile(BG& bg, int x, int y) {
 	x = x & 0x3FF;
 	y = y & 0x3FF;
 
@@ -228,7 +228,7 @@ Word PPU::get_tile(BG& bg, int x, int y) {
 	int local_x = tile_x & 31;
 	int local_y = tile_y & 31;
 
-	Word address = bg.tilemap_vram_address + (screen * 0x400) + (local_y * 32) + local_x;
+	u16 address = bg.tilemap_vram_address + (screen * 0x400) + (local_y * 32) + local_x;
 
 	return vram.data[address & 0x7FFF];
 }
@@ -241,7 +241,7 @@ void PPU::render_bg_scanline(BG& bg) {
 	
 	while (dot < 512) {
 
-		uint16_t xcounter = hires_mode ? dot : (dot >> 1);
+		u16 xcounter = hires_mode ? dot : (dot >> 1);
 		if (bg_mode == 7) {
 			fetched_pixel = fetch_mode7_pixel(bg, xcounter);
 			push_pixel(bg, fetched_pixel, dot);
@@ -259,7 +259,7 @@ void PPU::render_bg_scanline(BG& bg) {
 			int vofs = hofs_y + bg.bgvofs;
 
 			// Offset per tile...
-			Word valid_bit;
+			u16 valid_bit;
 			if (bg.layer == 1) {
 				valid_bit = 0x2000;
 			} else if (bg.layer == 2) {
@@ -299,7 +299,7 @@ void PPU::render_bg_scanline(BG& bg) {
 			int pixel_x = bg_x & 7;
 			int pixel_y = bg_y & 7;
 
-			Word entry = get_tile(bg, hofs, vofs);
+			u16 entry = get_tile(bg, hofs, vofs);
 
 			int tile_number = entry & 0x3FF;
 			bool hflip = entry & 0x4000;
@@ -323,7 +323,7 @@ void PPU::render_bg_scanline(BG& bg) {
 				pixel_y = pixel_y ^ 7;
 			}
 
-			Word tile_address = (bg.word_address + tile_number * (4 * bg.bpp)) & 0x7FFF;
+			u16 tile_address = (bg.word_address + tile_number * (4 * bg.bpp)) & 0x7FFF;
 
 			DecodedRow* row = get_tile_row(tile_address, pixel_y, bg.bpp);
 			const auto& row_data = row->data;
@@ -346,7 +346,8 @@ void PPU::render_bg_scanline(BG& bg) {
 			if (bg.bpp == 2) { stride = 4; }
 			if (bg.bpp == 4) { stride = 16; }
 
-			int palette_base = palette * stride;
+			int layer_offset = (bg_mode == 0) ? (bg.layer - 1) * 32 : 0;
+			int palette_base = layer_offset + (palette * stride);
 
 			// ONCE WORKING, ADD MOSAIC
 
@@ -356,7 +357,7 @@ void PPU::render_bg_scanline(BG& bg) {
 			px.colour_math = bg.enable_colour_math;
 
 			while (sub_px < 8 && dot < 512) {
-				Byte colour;
+				u8 colour;
 
 				if (hflip) {
 					colour = row_data[7 - sub_px];
@@ -365,7 +366,7 @@ void PPU::render_bg_scanline(BG& bg) {
 				}
 
 				int cgram_index = palette_base + colour;
-				Word snes_colour = cgram.data[cgram_index];
+				u16 snes_colour = cgram.data[cgram_index];
 
 				px.transparent = (colour == 0);
 				px.colour = snes_colour;
@@ -401,14 +402,14 @@ void PPU::fetch_objects() {
 
 	for (int n = 0; n < 128 && object_buffer.size() < MAX_OBJECTS; n++) {
 		int i = (first_object + n) & 0x7F;
-		Word x_coordinate = oam.data[(4 * i) + 0];
-		Word y_coordinate = oam.data[(4 * i) + 1];
-		Word tile_number  = oam.data[(4 * i) + 2];
-		Word attributes   = oam.data[(4 * i) + 3];
+		u16 x_coordinate = oam.data[(4 * i) + 0];
+		u16 y_coordinate = oam.data[(4 * i) + 1];
+		u16 tile_number  = oam.data[(4 * i) + 2];
+		u16 attributes   = oam.data[(4 * i) + 3];
 
 		tile_number       = ((attributes & 1) << 8) | tile_number;
-		Byte palette      = (attributes >> 1) & 0x7;
-		Byte priority     = 0;
+		u8 palette      = (attributes >> 1) & 0x7;
+		u8 priority     = 0;
 
 		switch ((attributes >> 4) & 0x3) {
 		case 0:
@@ -428,8 +429,8 @@ void PPU::fetch_objects() {
 		bool horizontal_flip = (attributes >> 6) & 1;
 		bool vertical_flip   = (attributes >> 7) & 1;
 
-		Byte high_byte = oam.data[512 + (int)(i / 4)];
-		Byte high_byte_pair = (high_byte >> (2 * (i % 4))) & 0x3;
+		u8 high_byte = oam.data[512 + (int)(i / 4)];
+		u8 high_byte_pair = (high_byte >> (2 * (i % 4))) & 0x3;
 		
 		x_coordinate = ((high_byte_pair & 1) << 8) | x_coordinate;
 		int signed_x = x_coordinate;
@@ -511,7 +512,7 @@ void PPU::render_obj_scanline(ObjectLayer& obj) {
 		int base_row = (o.tile_number >> 4) & 0xF;
 
 		bool second_base = (o.tile_number & 0x100) != 0;
-		Word tile_base = second_base ? oam.second_base : oam.first_base;
+		u16 tile_base = second_base ? oam.second_base : oam.first_base;
 
 		int last_tile_col = -1;
 		DecodedRow* row_data = nullptr;
@@ -533,19 +534,19 @@ void PPU::render_obj_scanline(ObjectLayer& obj) {
 
 				int tile_index = (row << 4) | col;
 
-				Word tile_address = (tile_base + (tile_index * 16)) & 0x7FFF;
+				u16 tile_address = (tile_base + (tile_index * 16)) & 0x7FFF;
 				row_data = get_tile_row(tile_address, pixel_y, 4);
 				last_tile_col = tile_col;
 			}
 
-			Byte colour = row_data->data[pixel_x];
+			u8 colour = row_data->data[pixel_x];
 
 			Pixel px;
 
 			px.transparent = (colour == 0);
 
-			Byte cgram_index = 128 + (o.palette * 16) + colour;
-			Word snes_colour = cgram.data[cgram_index];
+			u8 cgram_index = 128 + (o.palette * 16) + colour;
+			u16 snes_colour = cgram.data[cgram_index];
 
 			px.priority = o.priority;
 			px.colour = snes_colour;
@@ -638,11 +639,11 @@ Pixel PPU::colour_math(Pixel main, Pixel sub, bool ignore_half) {
 		return main;
 	}
 
-	Byte main_red   = (main.colour >> 0)  & 0x1F;
-	Byte main_green = (main.colour >> 5)  & 0x1F;
-	Byte main_blue  = (main.colour >> 10) & 0x1F;
+	u8 main_red   = (main.colour >> 0)  & 0x1F;
+	u8 main_green = (main.colour >> 5)  & 0x1F;
+	u8 main_blue  = (main.colour >> 10) & 0x1F;
 
-	Byte sub_red, sub_green, sub_blue;
+	u8 sub_red, sub_green, sub_blue;
 	if (!col.addend) {
 		sub_red   = col.red;
 		sub_green = col.green;
@@ -653,9 +654,9 @@ Pixel PPU::colour_math(Pixel main, Pixel sub, bool ignore_half) {
 		sub_blue  = (sub.colour >> 10)  & 0x1F;
 	}
 	
-	Byte red, green, blue;
+	u8 red, green, blue;
 
-	Byte divide = (col.half_colour_math && !ignore_half) ? 2 : 1;
+	u8 divide = (col.half_colour_math && !ignore_half) ? 2 : 1;
 	if (col.operator_type) {
 		red   = clamp( (main_red   - sub_red) / divide,   0, 31);
 		green = clamp( (main_green - sub_green) / divide, 0, 31);
@@ -691,7 +692,7 @@ void PPU::composite(std::array<Pixel, 512>& final_scanline) {
 	std::array<bool, 512> cm_window;
 	if (col.window1_enabled || col.window2_enabled) {
 		for (int dot = 0; dot < 512; dot++) {
-			uint16_t screen_x = hires_mode ? dot : (dot >> 1);
+			u16 screen_x = hires_mode ? dot : (dot >> 1);
 			cm_window[dot] = is_colour_math_window(screen_x);
 		}
 	}
@@ -740,11 +741,11 @@ void PPU::composite(std::array<Pixel, 512>& final_scanline) {
 
 static int dump_timer = 0;
 
-void PPU::clear_framebuffer(std::vector<uint32_t>& f) {
+void PPU::clear_framebuffer(std::vector<u32>& f) {
 	f.assign(screen_width * framebuffer_height, 0x000000FF);
 }
 
-void PPU::add_to_framebuffer(std::vector<uint32_t>& f, std::array<Pixel, 512>& line) {
+void PPU::add_to_framebuffer(std::vector<u32>& f, std::array<Pixel, 512>& line) {
 	int idx1 = screen_width * (2 * vcounter);
 
 	for (int i = 0; i < screen_width; i++) {
@@ -756,22 +757,22 @@ void PPU::add_to_framebuffer(std::vector<uint32_t>& f, std::array<Pixel, 512>& l
 
 static const auto& rgba_lut() {
 	static auto lut = []{
-		std::array<std::array<uint32_t, 32768>, 16> t{};
+		std::array<std::array<u32, 32768>, 16> t{};
 		for (int b = 0; b < 16; b++) {
 			for (int c = 0; c < 32768; c++) {
-				Byte r5 = c & 0x1F;
-				Byte g5 = (c >> 5) & 0x1F;
-				Byte b5 = (c >> 10) & 0x1F;
+				u8 r5 = c & 0x1F;
+				u8 g5 = (c >> 5) & 0x1F;
+				u8 b5 = (c >> 10) & 0x1F;
 
 				r5 = (r5 * (b + 1)) >> 4;
 				g5 = (g5 * (b + 1)) >> 4;
 				b5 = (b5 * (b + 1)) >> 4;
 
-				Byte r8 = (r5 << 3) | (r5 >> 2);
-				Byte g8 = (g5 << 3) | (g5 >> 2);
-				Byte b8 = (b5 << 3) | (b5 >> 2);
+				u8 r8 = (r5 << 3) | (r5 >> 2);
+				u8 g8 = (g5 << 3) | (g5 >> 2);
+				u8 b8 = (b5 << 3) | (b5 >> 2);
 
-				uint32_t rgba = (r8 << 24) | (g8 << 16) | (b8 << 8) | 0xFF;
+				u32 rgba = (r8 << 24) | (g8 << 16) | (b8 << 8) | 0xFF;
 
 				t[b][c] = rgba;
 			}
@@ -781,7 +782,7 @@ static const auto& rgba_lut() {
 	return lut;
 }
 
-uint32_t PPU::convert_to_rgba(uint16_t colour) {
+u32 PPU::convert_to_rgba(u16 colour) {
 	return rgba_lut()[brightness][colour];
 }
 
@@ -865,7 +866,7 @@ void PPU::render_scanline() {
 	}
 
 	for (const auto& px : final_scanline) {
-		uint32_t rgba = convert_to_rgba(px.colour);
+		u32 rgba = convert_to_rgba(px.colour);
 
 		framebuffer[idx1] = rgba;
 		framebuffer[idx2] = rgba;
@@ -1016,8 +1017,8 @@ void PPU::tick_component() {
 
 // Moved here to avoid circular dependency
 
-Byte PPU::communication_read(SNESAddress addr) {
-	Byte fetched = bus->get_open_bus();
+u8 PPU::communication_read(SNESAddress addr) {
+	u8 fetched = bus->get_open_bus();
 	// OAM
 	if (addr.offset == OAMDATAREAD_ADDRESS) {
 		if (oam.oamadd < 0x200) {

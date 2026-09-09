@@ -7,7 +7,7 @@ struct SPC700OpCodeInfo
 {
     const char* mnemonic;
     const char* addressing_mode;
-    uint8_t size;
+    u8 size;
 };
 
 constexpr SPC700OpCodeInfo spc700_opcode_info[256] = {

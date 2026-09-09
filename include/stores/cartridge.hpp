@@ -29,11 +29,11 @@ enum class Coprocessor {
 };
 
 struct HardwareDatabaseEntry {
-	std::array<Byte, 4> game_code {};
+	std::array<u8, 4> game_code {};
 	Coprocessor coprocessor;
 
-	Word checksum;
-	Word complement;
+	u16 checksum;
+	u16 complement;
 
 	DSPRevision dsp_revision = DSPRevision::None;
 	SuperFXRevision superfx_revision = SuperFXRevision::None;
@@ -56,28 +56,28 @@ struct CartridgeHardware {
 struct CartridgeHeader {
 	std::string title;
 
-	Byte map_mode;
-	Byte cartridge_type;
+	u8 map_mode;
+	u8 cartridge_type;
 
-	Byte rom_size;
-	Byte ram_size;
+	u8 rom_size;
+	u8 ram_size;
 
-	Byte region;
-	Byte version;
+	u8 region;
+	u8 version;
 
-	Byte developer_id;
+	u8 developer_id;
 
-	Word checksum;
- 	Word complement;
+	u16 checksum;
+ 	u16 complement;
 
-	Word reset_vector;
+	u16 reset_vector;
 
-	std::array<Byte, 2> maker_code {};
-	std::array<Byte, 4> game_code {};
-	Byte expansion_flash_size;
-	Byte expansion_ram_size;
-	Byte special_version;
-	Byte chipset_subtype;
+	std::array<u8, 2> maker_code {};
+	std::array<u8, 4> game_code {};
+	u8 expansion_flash_size;
+	u8 expansion_ram_size;
+	u8 special_version;
+	u8 chipset_subtype;
 };
 
 struct MapperCandidate {
@@ -86,32 +86,32 @@ struct MapperCandidate {
 	int score;
 };
 
-CartridgeHeader parse_header(const std::vector<Byte>& rom, size_t offset);
-int score(const MapperCandidate& candidate, size_t rom_size, const std::vector<Byte>& rom);
+CartridgeHeader parse_header(const std::vector<u8>& rom, size_t offset);
+int score(const MapperCandidate& candidate, size_t rom_size, const std::vector<u8>& rom);
 void validate_hardware_mapping(const CartridgeHeader& h, int& score);
 const HardwareDatabaseEntry* find_hardware_database_entry(const CartridgeHeader& h);
 Coprocessor detect_coprocessor(const CartridgeHeader& h);
-void detect_dsp_revision(CartridgeHeader& h, const std::vector<Byte>& rom, CartridgeHardware& hardware);
-void detect_superfx_revision(CartridgeHeader& h, const std::vector<Byte>& rom, CartridgeHardware& hardware);
-void detect_sa1_revision(CartridgeHeader& h, const std::vector<Byte>& rom, CartridgeHardware& hardware);
-void detect_sdd1_revision(CartridgeHeader& h, const std::vector<Byte>& rom, CartridgeHardware& hardware);
-void detect_hardware(CartridgeHeader& h, CartridgeHardware& hardware, const std::vector<Byte>& rom);
+void detect_dsp_revision(CartridgeHeader& h, const std::vector<u8>& rom, CartridgeHardware& hardware);
+void detect_superfx_revision(CartridgeHeader& h, const std::vector<u8>& rom, CartridgeHardware& hardware);
+void detect_sa1_revision(CartridgeHeader& h, const std::vector<u8>& rom, CartridgeHardware& hardware);
+void detect_sdd1_revision(CartridgeHeader& h, const std::vector<u8>& rom, CartridgeHardware& hardware);
+void detect_hardware(CartridgeHeader& h, CartridgeHardware& hardware, const std::vector<u8>& rom);
 void detect_memory_features(const CartridgeHeader& h, CartridgeHardware& hardware);
 const char* mapper_to_string(MapperType mapper);
 const char* coprocessor_to_string(Coprocessor coprocessor);
 const char* dsp_revision_to_string(DSPRevision revision);
 const char* superfx_revision_to_string(SuperFXRevision revision);
-std::string byte_to_hex(Byte value);
-std::string word_to_hex(Word value);
+std::string byte_to_hex(u8 value);
+std::string word_to_hex(u16 value);
 
 class Cartridge : public Store {
 public:
 
-	Byte get_open_bus() {
+	u8 get_open_bus() {
 		return std::visit([&](auto& m) { return m.get_open_bus(); }, mapper);
 	}
 
-	Byte read(SNESAddress address) override {
+	u8 read(SNESAddress address) override {
 		if (hardware.coprocessor == Coprocessor::SuperFX) {
 			if (superfx.handles(address)) {
 				return superfx.snes_side_read(address);
@@ -131,7 +131,7 @@ public:
 		return region_from_header_byte(header.region);
 	}
 
-	void write(SNESAddress address, Byte value) override {
+	void write(SNESAddress address, u8 value) override {
 		if (hardware.coprocessor == Coprocessor::SuperFX) {
 			if (superfx.handles(address)) {
 				superfx.snes_side_write(address, value);
@@ -148,7 +148,7 @@ public:
 	    );
 	}
 
-	Byte gsu_read(SNESAddress address) {
+	u8 gsu_read(SNESAddress address) {
 		address_bus = address;
 		return std::visit(
 		    [&](auto& m)
@@ -163,7 +163,7 @@ public:
 		return address_bus;
 	}
 
-	CycleCount penalty() override {
+	i64 penalty() override {
 		bool memory2 = (address_bus.bank >= 0x80 && address_bus.bank <= 0xBF &&
 						address_bus.offset >= 0x8000) || (address_bus.bank >= 0xC0);
 		if (memory2 && fastrom_enabled && is_fastrom_cartridge) {
@@ -176,7 +176,7 @@ public:
 		this->fastrom_enabled = fastrom_enabled;
 	}
 
-	MapperCandidate make_candidate(const std::vector<Byte>& rom, MapperType mapper, size_t offset) {
+	MapperCandidate make_candidate(const std::vector<u8>& rom, MapperType mapper, size_t offset) {
 	    MapperCandidate c{
 	        mapper,
 	        parse_header(rom, offset),
@@ -188,7 +188,7 @@ public:
 	    return c;
 	}
 
-	bool is_exhirom_half_swapped(const std::vector<Byte>& rom) {
+	bool is_exhirom_half_swapped(const std::vector<u8>& rom) {
 		if (rom.size() != 0x600000) {
 			return false;
 		}
@@ -198,7 +198,7 @@ public:
 		}
 
 		auto normal = make_candidate(rom, MapperType::ExHiROM, 0x40ffc0);
-		std::vector<Byte> test = rom;
+		std::vector<u8> test = rom;
 
 		std::rotate(test.begin(), test.begin() + 0x400000, test.end());
 		auto swapped = make_candidate(test, MapperType::ExHiROM, 0x40ffc0);
@@ -206,12 +206,12 @@ public:
 		return swapped.score > normal.score;
 	}
 
-	void fix_exhirom_half_swap(std::vector<Byte>& rom) {
+	void fix_exhirom_half_swap(std::vector<u8>& rom) {
 		std::rotate(rom.begin(), rom.begin() + 0x400000, rom.end());
 	}
 
 	void load_cartridge(const std::string& directory, Ricoh5A22* cpu, const std::string& game_name) {
-		std::vector<Byte> rom = load_rom(directory);
+		std::vector<u8> rom = load_rom(directory);
 
 		std::vector<MapperCandidate> candidates;
 		
@@ -401,7 +401,7 @@ public:
 		return hardware.coprocessor != Coprocessor::None;
 	}
 
-	CycleCount get_coprocessor_cycle() {
+	i64 get_coprocessor_cycle() {
 		if (hardware.coprocessor == Coprocessor::SuperFX) {
 			return superfx.get_coprocessor_cycle();
 		}
@@ -422,7 +422,7 @@ public:
 		);
 	}
 
-	Byte get_from_rom(unsigned int address) {
+	u8 get_from_rom(unsigned int address) {
 		return std::visit(
 		    [&](auto& m)
 		    {
@@ -433,10 +433,10 @@ public:
 	}
 
 private:
-	Byte mapping; // Stores cartridge's mapping
+	u8 mapping; // Stores cartridge's mapping
 	bool is_fastrom_cartridge = false;
 	bool fastrom_enabled = false;
-	CycleCount penalty_value = 0;
+	i64 penalty_value = 0;
 	CartridgeHeader header;
 	CartridgeHardware hardware;
 	

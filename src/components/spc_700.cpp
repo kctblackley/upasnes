@@ -11,7 +11,7 @@
 
 namespace {
 
-	std::string byte_hex(Byte b) {
+	std::string byte_hex(u8 b) {
 		std::ostringstream s;
 		s << std::uppercase
 		  << std::hex
@@ -21,7 +21,7 @@ namespace {
 		return s.str();
 	}
 
-	std::string word_hex(Word w) {
+	std::string word_hex(u16 w) {
 		std::ostringstream s;
 		s << std::uppercase
 		  << std::hex
@@ -33,7 +33,7 @@ namespace {
 
 }
 
-Byte SPC700::trace_read(Address addr) const
+u8 SPC700::trace_read(u32 addr) const
 {
 	addr &= 0xFFFF;
 
@@ -52,7 +52,7 @@ Byte SPC700::trace_read(Address addr) const
 	return bus->read(addr);
 }
 
-std::string SPC700::trace_operands(Byte opcode, Address pc) const
+std::string SPC700::trace_operands(u8 opcode, u32 pc) const
 {
 	const SPC700OpCodeInfo& info = spc700_opcode_info[opcode];
 
@@ -64,10 +64,10 @@ std::string SPC700::trace_operands(Byte opcode, Address pc) const
 
 	// The opcode itself is byte 0, so only print the bytes following it.
 	for (unsigned i = 1; i < info.size; ++i) {
-		Address operand_pc =
-			static_cast<Address>((pc + i) & 0xFFFF);
+		u32 operand_pc =
+			static_cast<u32>((pc + i) & 0xFFFF);
 
-		Byte operand = trace_read(operand_pc);
+		u8 operand = trace_read(operand_pc);
 
 		out << " "
 		    << std::setw(2)
@@ -83,8 +83,8 @@ void SPC700::log_instruction()
 		return;
 	}
 
-	const Byte opcode =
-		static_cast<Byte>(BufferOpCode);
+	const u8 opcode =
+		static_cast<u8>(BufferOpCode);
 
 	const SPC700OpCodeInfo& info =
 		spc700_opcode_info[opcode];
@@ -116,25 +116,25 @@ void SPC700::log_instruction()
 		<< "A:"
 		<< std::setw(2)
 		<< static_cast<unsigned>(
-			static_cast<Byte>(regs.A))
+			static_cast<u8>(regs.A))
 
 		<< " "
 		<< "X:"
 		<< std::setw(2)
 		<< static_cast<unsigned>(
-			static_cast<Byte>(regs.X))
+			static_cast<u8>(regs.X))
 
 		<< " "
 		<< "Y:"
 		<< std::setw(2)
 		<< static_cast<unsigned>(
-			static_cast<Byte>(regs.Y))
+			static_cast<u8>(regs.Y))
 
 		<< " "
 		<< "S:"
 		<< std::setw(2)
 		<< static_cast<unsigned>(
-			static_cast<Byte>(regs.S))
+			static_cast<u8>(regs.S))
 
 		<< " "
 		<< "P:"
@@ -206,11 +206,11 @@ SPC700::SPC700() : cycle(0), instruction_cycle(0) {
 	}
 }
 
-void SPC700::add_cycles(CycleCount cycles) {
+void SPC700::add_cycles(i64 cycles) {
 	this->cycle += cycles;
 }
 
-TickCount SPC700::get_tick() {
+i64 SPC700::get_tick() {
 	return this->tick;
 }
 
@@ -227,7 +227,7 @@ void SPC700::run_half_cycle() {
 	op.function(*this, op.skipped);
 }
 
-void SPC700::accumulate_dsp(CycleCount delta) {
+void SPC700::accumulate_dsp(i64 delta) {
 	dsp_accumulated_cycles += delta;
 	while (dsp_accumulated_cycles > sdsp_cycle_constant) {
 		sdsp_ticks_this_frame++;
@@ -269,8 +269,8 @@ void SPC700::tick_component() { // when the component is ticked, it does a half 
 	}
 }
 
-CycleCount SPC700::get_cycle() {
-	return static_cast<CycleCount>(master_cycle);
+i64 SPC700::get_cycle() {
+	return static_cast<i64>(master_cycle);
 }
 
 void SPC700::reset() { // RUN IPL ROM HERE! MEMORY MAP THE IPL ROM!

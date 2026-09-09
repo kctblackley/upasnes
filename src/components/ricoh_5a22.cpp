@@ -13,17 +13,17 @@
 constexpr int LOG_EMULATION_MODE = false;
 
 namespace {
-	std::string byte_hex(Byte b) {
+	std::string byte_hex(u8 b) {
 		std::ostringstream s;
 		s << std::uppercase << std::hex << std::setfill('0') << std::setw(2) << static_cast<int>(b);
 		return s.str();
 	}
-	std::string word_hex(Word w) {
+	std::string word_hex(u16 w) {
 		std::ostringstream s;
 		s << std::uppercase << std::hex << std::setfill('0') << std::setw(4) << static_cast<int>(w);
 		return s.str();
 	}
-	std::string long_hex(Address a) {
+	std::string long_hex(u32 a) {
 		std::ostringstream s;
 		s << std::uppercase << std::hex << std::setfill('0') << std::setw(6) << (a & 0xFFFFFF);
 		return s.str();
@@ -32,15 +32,15 @@ namespace {
 
 Ricoh5A22::Ricoh5A22(Bus* bus) : bus(bus), cycle(0), instruction_cycle(0) {}
 
-void Ricoh5A22::add_cycles(CycleCount cycles) {
+void Ricoh5A22::add_cycles(i64 cycles) {
 	this->cycle += cycles;
 }
 
-CycleCount Ricoh5A22::get_cycle() {
+i64 Ricoh5A22::get_cycle() {
 	return this->cycle;
 }
 
-TickCount Ricoh5A22::get_tick() {
+i64 Ricoh5A22::get_tick() {
 	return this->tick;
 }
 
@@ -119,12 +119,12 @@ void Ricoh5A22::log_ricoh() {
 
 			int size = flag ? info.size_when_set : info.size_when_clear;
 
-			Word trace_pc = regs.PC;
-			Byte trace_pb = regs.PB;
+			u16 trace_pc = regs.PC;
+			u8 trace_pb = regs.PB;
 
 			for (int i = 0; i < size - 1; i++) {
 				trace_pc++;
-				Byte operand = read((trace_pb << 16) | trace_pc);
+				u8 operand = read((trace_pb << 16) | trace_pc);
 				std::cout << " " << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(operand);
 			}
 			
@@ -194,7 +194,7 @@ void Ricoh5A22::tick_component() { // when the component is ticked, it does a ha
 	}
 	if (dma->gpdma_pending) {
 		tick_cpu();
-		CycleCount alignment = (8 - (this->cycle & 7)) & 7;
+		i64 alignment = (8 - (this->cycle & 7)) & 7;
 		this->add_cycles(alignment);
 		dma->gpdma_init();
 		return;
@@ -213,8 +213,8 @@ void Ricoh5A22::connect_dma(DMA* dma) {
 }
 
 void Ricoh5A22::initialise() {
-	uint8_t lo = read(0x00FFFC);
-	uint8_t hi = read(0x00FFFD);
+	u8 lo = read(0x00FFFC);
+	u8 hi = read(0x00FFFD);
 
 	std::cout << std::hex << "RESET LO: " << (int)lo << std::endl;
 	std::cout << std::hex << "RESET HI: " << (int)hi << std::endl;
@@ -250,11 +250,11 @@ void Ricoh5A22::log() {
 	          << "\n";
 }
 
-Byte Ricoh5A22::read(Address addr) {
+u8 Ricoh5A22::read(u32 addr) {
 	return bus->read(addr);
 }
 
-void Ricoh5A22::write(Address addr, Byte value) {
+void Ricoh5A22::write(u32 addr, u8 value) {
 	bus->write(addr, value);
 }
 
@@ -270,11 +270,11 @@ void Ricoh5A22::reset_test_memory() {
 	bus->reset_test_memory();
 }
 
-Byte Ricoh5A22::test_peek(Address addr) {
+u8 Ricoh5A22::test_peek(u32 addr) {
 	return bus->test_peek(addr);
 }
 
-void Ricoh5A22::test_poke(Address addr, Byte value) {
+void Ricoh5A22::test_poke(u32 addr, u8 value) {
 	bus->test_poke(addr, value);
 }
 
@@ -282,6 +282,6 @@ void Ricoh5A22::set_fastrom_from_bus(bool fastrom_enabled) {
 	bus->set_fastrom(fastrom_enabled);
 }
 
-Byte Ricoh5A22::get_open_bus() {
+u8 Ricoh5A22::get_open_bus() {
 	return open_bus;
 }

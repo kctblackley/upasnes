@@ -24,21 +24,21 @@ constexpr const char* COLOR_BOLD   = "\033[1m";
 constexpr const char* COLOR_RESET  = "\033[0m";
 
 struct RegisterState {
-	Word pc = 0;
-	Word s = 0;
-	Byte p = 0;
-	Word a = 0;
-	Word x = 0;
-	Word y = 0;
-	Byte dbr = 0;
-	Word d = 0;
-	Byte pbr = 0;
+	u16 pc = 0;
+	u16 s = 0;
+	u8 p = 0;
+	u16 a = 0;
+	u16 x = 0;
+	u16 y = 0;
+	u8 dbr = 0;
+	u16 d = 0;
+	u8 pbr = 0;
 	bool e = false;
 };
 
 struct MemoryEntry {
-	Address address = 0;
-	Byte value = 0;
+	u32 address = 0;
+	u8 value = 0;
 };
 
 struct TestCase {
@@ -57,15 +57,15 @@ struct Mismatch {
 
 RegisterState parse_register_state(const JsonValue& node) {
 	RegisterState state;
-	state.pc  = static_cast<Word>(node["pc"].as_int());
-	state.s   = static_cast<Word>(node["s"].as_int());
-	state.p   = static_cast<Byte>(node["p"].as_int());
-	state.a   = static_cast<Word>(node["a"].as_int());
-	state.x   = static_cast<Word>(node["x"].as_int());
-	state.y   = static_cast<Word>(node["y"].as_int());
-	state.dbr = static_cast<Byte>(node["dbr"].as_int());
-	state.d   = static_cast<Word>(node["d"].as_int());
-	state.pbr = static_cast<Byte>(node["pbr"].as_int());
+	state.pc  = static_cast<u16>(node["pc"].as_int());
+	state.s   = static_cast<u16>(node["s"].as_int());
+	state.p   = static_cast<u8>(node["p"].as_int());
+	state.a   = static_cast<u16>(node["a"].as_int());
+	state.x   = static_cast<u16>(node["x"].as_int());
+	state.y   = static_cast<u16>(node["y"].as_int());
+	state.dbr = static_cast<u8>(node["dbr"].as_int());
+	state.d   = static_cast<u16>(node["d"].as_int());
+	state.pbr = static_cast<u8>(node["pbr"].as_int());
 	state.e   = node["e"].as_int() != 0;
 	return state;
 }
@@ -78,8 +78,8 @@ std::vector<MemoryEntry> parse_ram(const JsonValue& state_node) {
 	for (size_t i = 0; i < ram.size(); i++) {
 		const JsonValue& pair = ram[i];
 		MemoryEntry entry;
-		entry.address = static_cast<Address>(pair[0].as_int());
-		entry.value   = static_cast<Byte>(pair[1].as_int());
+		entry.address = static_cast<u32>(pair[0].as_int());
+		entry.value   = static_cast<u8>(pair[1].as_int());
 		entries.push_back(entry);
 	}
 	return entries;
@@ -112,10 +112,10 @@ void apply_initial_state(Ricoh5A22& cpu, const TestCase& test_case) {
 	}
 }
 
-void run_block_move(Ricoh5A22& cpu, Byte opcode_value) {
-	CycleCount idx = 0;
-	constexpr CycleCount MAX_STEPS = 200; // enough for A=0xFFFF (65,536 bytes)
-	CycleCount steps = 0;
+void run_block_move(Ricoh5A22& cpu, u8 opcode_value) {
+	i64 idx = 0;
+	constexpr i64 MAX_STEPS = 200; // enough for A=0xFFFF (65,536 bytes)
+	i64 steps = 0;
 
 	do {
 		cpu.apply_invariants();
@@ -143,15 +143,15 @@ void run_block_move(Ricoh5A22& cpu, Byte opcode_value) {
 	} while (idx != 0 || cpu.regs.A != 0xFFFF);
 }
 
-void run_instruction(Ricoh5A22& cpu, Byte opcode_value) {
+void run_instruction(Ricoh5A22& cpu, u8 opcode_value) {
 	if (opcode_value == 0x44 || opcode_value == 0x54) {
 		run_block_move(cpu, opcode_value);
 		return;
 	}
 
-	CycleCount idx = 0;
-	constexpr CycleCount MAX_STEPS = 64;
-	CycleCount steps = 0;
+	i64 idx = 0;
+	constexpr i64 MAX_STEPS = 64;
+	i64 steps = 0;
 
 	do {
 		cpu.apply_invariants();
@@ -197,7 +197,7 @@ void compare_registers(const RegisterState& expected, Ricoh5A22& cpu, std::vecto
 template <typename CPUType>
 void compare_memory(const std::vector<MemoryEntry>& expected, CPUType& cpu, std::vector<Mismatch>& mismatches) {
 	for (const MemoryEntry& entry : expected) {
-		Byte actual = cpu.test_peek(entry.address);
+		u8 actual = cpu.test_peek(entry.address);
 		if (actual != entry.value) {
 			std::ostringstream field;
 			field << "RAM[" << to_hex(entry.address, 6) << "]";
@@ -213,12 +213,12 @@ void compare_memory(const std::vector<MemoryEntry>& expected, CPUType& cpu, std:
 // and a single flat 64KB address space (see tests/00.json for the shape).
 
 struct SPCRegisterState {
-	Word pc = 0;
-	Byte a = 0;
-	Byte x = 0;
-	Byte y = 0;
-	Byte sp = 0;
-	Byte psw = 0;
+	u16 pc = 0;
+	u8 a = 0;
+	u8 x = 0;
+	u8 y = 0;
+	u8 sp = 0;
+	u8 psw = 0;
 };
 
 struct SPCTestCase {
@@ -231,12 +231,12 @@ struct SPCTestCase {
 
 SPCRegisterState parse_spc_register_state(const JsonValue& node) {
 	SPCRegisterState state;
-	state.pc  = static_cast<Word>(node["pc"].as_int());
-	state.a   = static_cast<Byte>(node["a"].as_int());
-	state.x   = static_cast<Byte>(node["x"].as_int());
-	state.y   = static_cast<Byte>(node["y"].as_int());
-	state.sp  = static_cast<Byte>(node["sp"].as_int());
-	state.psw = static_cast<Byte>(node["psw"].as_int());
+	state.pc  = static_cast<u16>(node["pc"].as_int());
+	state.a   = static_cast<u8>(node["a"].as_int());
+	state.x   = static_cast<u8>(node["x"].as_int());
+	state.y   = static_cast<u8>(node["y"].as_int());
+	state.sp  = static_cast<u8>(node["sp"].as_int());
+	state.psw = static_cast<u8>(node["psw"].as_int());
 	return state;
 }
 
@@ -267,12 +267,12 @@ void apply_initial_state(SPC700& cpu, const SPCTestCase& test_case) {
 // SPC700::run_half_cycle() reads it, rather than relying on a real fetch
 // cycle -- this lets the harness drive any handler directly regardless of
 // how much of real opcode fetch/dispatch has been wired up yet.
-void run_instruction(SPC700& cpu, Byte opcode_value) {
+void run_instruction(SPC700& cpu, u8 opcode_value) {
 	cpu.BufferOpCode = opcode_value;
 
-	CycleCount idx = 0;
-	constexpr CycleCount MAX_STEPS = 64;
-	CycleCount steps = 0;
+	i64 idx = 0;
+	constexpr i64 MAX_STEPS = 64;
+	i64 steps = 0;
 
 	do {
 		cpu.apply_invariants();
@@ -301,7 +301,7 @@ void compare_registers(const SPCRegisterState& expected, SPC700& cpu, std::vecto
 
 }
 
-bool test_spc700(const std::string& opcode_name, Byte opcode_value) {
+bool test_spc700(const std::string& opcode_name, u8 opcode_value) {
 	const std::string path = "tests/" + opcode_name + ".json";
 
 	JsonValue root;
@@ -378,7 +378,7 @@ bool test_spc700(const std::string& opcode_name, Byte opcode_value) {
 
 
 
-bool test(const std::string& opcode_name, Byte opcode_value) {
+bool test(const std::string& opcode_name, u8 opcode_value) {
 	const std::string path = "tests/" + opcode_name + ".json";
 
 	JsonValue root;
@@ -397,7 +397,7 @@ bool test(const std::string& opcode_name, Byte opcode_value) {
 	}
 
 	Bus bus;
-	bus.set_wait_callback([](CycleCount) {}); // test mode never touches this, but keep it well-defined
+	bus.set_wait_callback([](i64) {}); // test mode never touches this, but keep it well-defined
 	Ricoh5A22 cpu(&bus);
 	cpu.enable_test_mode();
 

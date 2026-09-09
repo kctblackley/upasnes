@@ -10,10 +10,10 @@ bool has_copier_header(size_t file_size) {
     return ((file_size - COPIER_HEADER_SIZE) % 0x8000) == 0;
 }
 
-std::vector<Byte> load_rom(const std::string& filename) {
+std::vector<u8> load_rom(const std::string& filename) {
     std::ifstream file(filename, std::ios::binary);
 
-    std::vector<Byte> rom{
+    std::vector<u8> rom{
         std::istreambuf_iterator<char>(file),
         std::istreambuf_iterator<char>()};
 

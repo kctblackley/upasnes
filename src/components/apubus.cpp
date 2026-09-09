@@ -19,8 +19,8 @@ APUBus::APUBus() {
 	}
 }
 
-Byte APUBus::read(Word address) {
-	Byte fetched = data[address];
+u8 APUBus::read(u16 address) {
+	u8 fetched = data[address];
 	if (ipl_enabled && address >= 0xFFC0) {
 		fetched = ipl[address - 0xFFC0];
 	}
@@ -35,7 +35,7 @@ Byte APUBus::read(Word address) {
 	return fetched;
 }
 
-void APUBus::write(Word address, Byte value) {
+void APUBus::write(u16 address, u8 value) {
 	if (address == 0xF2) {
 		dsp_address = value;
 		return;

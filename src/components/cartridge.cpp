@@ -8,7 +8,7 @@ constexpr bool FORCE_HIROM = false;
 constexpr size_t HEADER_BASE = 0xFFC0;
 constexpr size_t EXPANDED_HEADER_BASE = 0xFFB0;
 
-constexpr HardwareDatabaseEntry BuildDatabaseEntry(Byte gc0 = 0, Byte gc1 = 0, Byte gc2 = 0, Byte gc3 = 0, Word checksum = 0, Word complement = 0, Coprocessor coprocessor = Coprocessor::None, DSPRevision dsp_revision = DSPRevision::None, SuperFXRevision superfx_revision = SuperFXRevision::None, SA1Revision sa1_revision = SA1Revision::None, SDD1Revision sdd1_revision = SDD1Revision::None) {
+constexpr HardwareDatabaseEntry BuildDatabaseEntry(u8 gc0 = 0, u8 gc1 = 0, u8 gc2 = 0, u8 gc3 = 0, u16 checksum = 0, u16 complement = 0, Coprocessor coprocessor = Coprocessor::None, DSPRevision dsp_revision = DSPRevision::None, SuperFXRevision superfx_revision = SuperFXRevision::None, SA1Revision sa1_revision = SA1Revision::None, SDD1Revision sdd1_revision = SDD1Revision::None) {
 	HardwareDatabaseEntry hde;
 	hde.game_code[0] = gc0;
 	hde.game_code[1] = gc1;
@@ -115,7 +115,7 @@ Coprocessor detect_coprocessor(const CartridgeHeader& h) {
 	}
 }
 
-void detect_dsp_revision(CartridgeHeader& h, const std::vector<Byte>& rom, CartridgeHardware& hardware) {
+void detect_dsp_revision(CartridgeHeader& h, const std::vector<u8>& rom, CartridgeHardware& hardware) {
 	hardware.dsp_revision = DSPRevision::None;	
 
 	if (const auto* entry = find_hardware_database_entry(h)) {
@@ -128,7 +128,7 @@ void detect_dsp_revision(CartridgeHeader& h, const std::vector<Byte>& rom, Cartr
 	// Use ROM signature
 }
 
-void detect_superfx_revision(CartridgeHeader& h, const std::vector<Byte>& rom, CartridgeHardware& hardware) {
+void detect_superfx_revision(CartridgeHeader& h, const std::vector<u8>& rom, CartridgeHardware& hardware) {
 	hardware.superfx_revision = SuperFXRevision::None;	
 
 	if (const auto* entry = find_hardware_database_entry(h)) {
@@ -141,17 +141,17 @@ void detect_superfx_revision(CartridgeHeader& h, const std::vector<Byte>& rom, C
 	hardware.superfx_revision = SuperFXRevision::GSU2;
 }
 
-void detect_sa1_revision(CartridgeHeader& h, const std::vector<Byte>& rom, CartridgeHardware& hardware) {
+void detect_sa1_revision(CartridgeHeader& h, const std::vector<u8>& rom, CartridgeHardware& hardware) {
 	hardware.sa1_revision = SA1Revision::SA1;	
 	// No actual 'revisions' of SA1 (just doing this for consistency because I am weird!)
 }
 
-void detect_sdd1_revision(CartridgeHeader& h, const std::vector<Byte>& rom, CartridgeHardware& hardware) {
+void detect_sdd1_revision(CartridgeHeader& h, const std::vector<u8>& rom, CartridgeHardware& hardware) {
 	hardware.sdd1_revision = SDD1Revision::SDD1;	
 	// Same thing here!
 }
 
-void detect_hardware(CartridgeHeader& h, CartridgeHardware& hardware, const std::vector<Byte>& rom) {
+void detect_hardware(CartridgeHeader& h, CartridgeHardware& hardware, const std::vector<u8>& rom) {
 	hardware = {};
 
 	hardware.coprocessor = detect_coprocessor(h);
@@ -203,7 +203,7 @@ void detect_memory_features(const CartridgeHeader& h, CartridgeHardware& hardwar
 	}
 }
 
-CartridgeHeader parse_header(const std::vector<Byte>& rom, size_t offset) {
+CartridgeHeader parse_header(const std::vector<u8>& rom, size_t offset) {
 	CartridgeHeader h {};
 
 	h.title = std::string(reinterpret_cast<const char*>(&rom[offset]), 21);
@@ -239,9 +239,9 @@ CartridgeHeader parse_header(const std::vector<Byte>& rom, size_t offset) {
 	return h;
 }
 
-uint16_t calculate_checksum(const std::vector<Byte>& rom)
+u16 calculate_checksum(const std::vector<u8>& rom)
 {
-    uint32_t sum = 0;
+    u32 sum = 0;
 
     for (auto b : rom)
         sum += b;
@@ -250,8 +250,8 @@ uint16_t calculate_checksum(const std::vector<Byte>& rom)
 }
 
 void validate_hardware_mapping(const CartridgeHeader& h, int& score) {
-	const Byte map = h.map_mode & 0x0F;
-	const Byte chip = h.cartridge_type & 0xF0;
+	const u8 map = h.map_mode & 0x0F;
+	const u8 chip = h.cartridge_type & 0xF0;
 
 	if (chip == 0x30 && map == 0x03) {
 		score += 10;
@@ -261,7 +261,7 @@ void validate_hardware_mapping(const CartridgeHeader& h, int& score) {
 	}
 }
 
-int score(const MapperCandidate& candidate, size_t rom_size, const std::vector<Byte>& rom) {
+int score(const MapperCandidate& candidate, size_t rom_size, const std::vector<u8>& rom) {
 	int score = 0;
 	CartridgeHeader h = candidate.h;
 
@@ -452,7 +452,7 @@ const char* superfx_revision_to_string(SuperFXRevision revision)
 	return "Unknown";
 }
 
-std::string byte_to_hex(Byte value)
+std::string byte_to_hex(u8 value)
 {
 	std::ostringstream ss;
 
@@ -466,7 +466,7 @@ std::string byte_to_hex(Byte value)
 	return ss.str();
 }
 
-std::string word_to_hex(Word value)
+std::string word_to_hex(u16 value)
 {
 	std::ostringstream ss;
 

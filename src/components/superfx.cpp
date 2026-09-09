@@ -19,16 +19,16 @@ std::string hex(T value, int width) {
        << std::uppercase
        << std::setfill('0')
        << std::setw(width)
-       << static_cast<uint64_t>(value);
+       << static_cast<u64>(value);
     return ss.str();
 }
 
-Byte SuperFX::get_open_bus() {
+u8 SuperFX::get_open_bus() {
 	return cpu->get_open_bus();
 }
 
 void SuperFX::tick_component() {
-	CycleCount current_cycle = cycle;
+	i64 current_cycle = cycle;
 
    if (sfr.g == 0) {
       step(6);
@@ -118,7 +118,7 @@ void SuperFX::i_rol() {
 }
 
 void SuperFX::i_branch(bool condition) {
-   int8_t displacement = pipe();
+   i8 displacement = pipe();
    if (condition) {
       r[15] += displacement;
    }
@@ -226,7 +226,7 @@ void SuperFX::i_add_adc(unsigned int n) {
    sfr.ov = ~(sr() ^ n) & (n ^ r) & 0x8000;
    sfr.s  = (r & 0x8000);
    sfr.cy = (r >= 0x10000);
-   sfr.z = ((Word)r == 0);
+   sfr.z = ((u16)r == 0);
    dr() = r;
    reset_registers();
 }
@@ -239,7 +239,7 @@ void SuperFX::i_sub_sbc_cmp(unsigned int n) {
    sfr.ov = (sr() ^ n) & (sr() ^ r) & 0x8000;
    sfr.s  = (r & 0x8000);
    sfr.cy = (r >= 0);
-   sfr.z  = ((Word)r == 0);
+   sfr.z  = ((u16)r == 0);
    if (!sfr.alt2 || !sfr.alt1) {
       dr() = r;
    }
@@ -269,7 +269,7 @@ void SuperFX::i_mult_umult(unsigned int n) {
    if (!sfr.alt2) {
       n = r[n];
    }
-   dr() = (!sfr.alt1 ? (Word)((int8_t)sr() * (int8_t)n) : (Word)((uint8_t)sr() * (uint8_t)n));
+   dr() = (!sfr.alt1 ? (u16)((i8)sr() * (i8)n) : (u16)((u8)sr() * (u8)n));
    sfr.s = (dr() & 0x8000);
    sfr.z = (dr() == 0);
    reset_registers();
@@ -290,7 +290,7 @@ void SuperFX::i_link(unsigned int n) {
 }
 
 void SuperFX::i_sex() {
-   dr() = (int8_t)sr();
+   dr() = (i8)sr();
    sfr.s = (dr() & 0x8000);
    sfr.z = (dr() == 0);
    reset_registers();
@@ -298,7 +298,7 @@ void SuperFX::i_sex() {
 
 void SuperFX::i_asr_div2() {
    sfr.cy = (sr() & 1);
-   dr() = ((int16_t)sr() >> 1) + (sfr.alt1 ? ((sr() + 1) >> 16) : 0);
+   dr() = ((i16)sr() >> 1) + (sfr.alt1 ? ((sr() + 1) >> 16) : 0);
    sfr.s = (dr() & 0x8000);
    sfr.z = (dr() == 0);
    reset_registers();
@@ -332,7 +332,7 @@ void SuperFX::i_lob() {
 }
 
 void SuperFX::i_fmult_lmult() {
-   uint32_t result = (int16_t)(sr()) * (int16_t)(r[6]);
+   u32 result = (i16)(sr()) * (i16)(r[6]);
    if (sfr.alt1) {
       r[4] = result;
    }
@@ -347,14 +347,14 @@ void SuperFX::i_fmult_lmult() {
 void SuperFX::i_ibt_lms_sms(unsigned int n) {
    if (sfr.alt1) {
       ramaddr = pipe() << 1;
-      Byte lo = read_ram_buffer(ramaddr ^ 0) << 0;
+      u8 lo = read_ram_buffer(ramaddr ^ 0) << 0;
       r[n] = read_ram_buffer(ramaddr ^ 1) << 8 | lo;
    } else if (sfr.alt2) {
       ramaddr = pipe() << 1;
       write_ram_buffer(ramaddr ^ 0, r[n] >> 0);
       write_ram_buffer(ramaddr ^ 1, r[n] >> 8);
    } else {
-      r[n] = (int8_t)pipe();
+      r[n] = (i8)pipe();
    }
    reset_registers();
 }
@@ -421,13 +421,13 @@ void SuperFX::i_getb() {
       dr() = read_rom_buffer();
       break;
    case 1:
-      dr() = read_rom_buffer() << 8 | (uint8_t)sr();
+      dr() = read_rom_buffer() << 8 | (u8)sr();
       break;
    case 2:
       dr() = (sr() & 0xFF00) | read_rom_buffer();
       break;
    case 3:
-      dr() = (int8_t)read_rom_buffer();
+      dr() = (i8)read_rom_buffer();
       break;
    }
    reset_registers();
@@ -437,7 +437,7 @@ void SuperFX::i_iwt_lm_sm(unsigned int n) {
    if (sfr.alt1) {
       ramaddr = pipe() << 0;
       ramaddr = ramaddr | (pipe() << 8);
-      Byte lo = read_ram_buffer(ramaddr ^ 0) << 0;
+      u8 lo = read_ram_buffer(ramaddr ^ 0) << 0;
       r[n] = (read_ram_buffer(ramaddr ^ 1) << 8) | lo;
    } else if (sfr.alt2) {
       ramaddr = pipe() << 0;
@@ -445,7 +445,7 @@ void SuperFX::i_iwt_lm_sm(unsigned int n) {
       write_ram_buffer(ramaddr ^ 0, r[n] >> 0);
       write_ram_buffer(ramaddr ^ 1, r[n] >> 8);
    } else {
-      Byte lo = pipe();
+      u8 lo = pipe();
       r[n] = (pipe() << 8) | lo;
    }
    reset_registers();
@@ -455,7 +455,7 @@ void SuperFX::i_iwt_lm_sm(unsigned int n) {
 
 // Using exact same idea as bsnes
 
-void SuperFX::instruction(Byte opcode) {
+void SuperFX::instruction(u8 opcode) {
    #define op(id, name, ...) \
       case id: return i_##name(__VA_ARGS__);
    
@@ -576,7 +576,7 @@ void SuperFX::synchronise_cpu() {
    snes->sync_to_superfx();
 }
 
-Byte SuperFX::read(Address address) {
+u8 SuperFX::read(u32 address) {
    if ((address & 0xC00000) == 0x000000) {
       while (!scmr.ron) {
          step(6);
@@ -604,7 +604,7 @@ Byte SuperFX::read(Address address) {
    return get_open_bus();
 }
 
-void SuperFX::write(Address address, Byte data) {
+void SuperFX::write(u32 address, u8 data) {
    if ((address & 0xE00000) == 0x600000) {
       while (!scmr.ran) {
          step(6);
@@ -614,8 +614,8 @@ void SuperFX::write(Address address, Byte data) {
    }
 }
 
-Byte SuperFX::read_opcode(Word address) {
-   Word offset = address - cbr;
+u8 SuperFX::read_opcode(u16 address) {
+   u16 offset = address - cbr;
    if (offset < 512) {
       if (!cache.valid[offset >> 4]) {
          unsigned int dp = offset & 0xFFF0;
@@ -642,15 +642,15 @@ Byte SuperFX::read_opcode(Word address) {
       return read(pbr << 16 | address);
    }
 }
-Byte SuperFX::peekpipe() {
-   Byte result = pipeline;
+u8 SuperFX::peekpipe() {
+   u8 result = pipeline;
    pipeline = read_opcode(r[15]);
    r[15].modified = false;
    return result;
 }
 
-Byte SuperFX::pipe() {
-   Byte result = pipeline;
+u8 SuperFX::pipe() {
+   u8 result = pipeline;
    pipeline = read_opcode(++r[15]);
    r[15].modified = false;
    return result;
@@ -662,11 +662,11 @@ void SuperFX::flush_cache() {
    }
 }
 
-Byte SuperFX::read_cache(Word address) {
+u8 SuperFX::read_cache(u16 address) {
    return cache.buffer[(address + cbr) & 511];
 }
 
-void SuperFX::write_cache(Word address, Byte data) {
+void SuperFX::write_cache(u16 address, u8 data) {
    cache.buffer[(address + cbr) & 511] = data;
    if ((address & 15) == 15) {
       cache.valid[address >> 4] = true;
@@ -677,7 +677,7 @@ void SuperFX::stop() {
    cpu->signal_superfx_irq();
 }
 
-Byte SuperFX::colour(Byte source) {
+u8 SuperFX::colour(u8 source) {
    if (por.high_nibble) {
       return (colr & 0xF0) | (source >> 4);
    }
@@ -687,7 +687,7 @@ Byte SuperFX::colour(Byte source) {
    return source;
 }
 
-void SuperFX::plot(Byte x, Byte y) {
+void SuperFX::plot(u8 x, u8 y) {
    if (!por.transparent) {
       if (scmr.md == 3) {
          if (por.freeze_high) {
@@ -706,7 +706,7 @@ void SuperFX::plot(Byte x, Byte y) {
       }
    }
 
-   Byte colour = colr;
+   u8 colour = colr;
    if (por.dither && scmr.md != 3) {
       if ((x ^ y) & 1) {
          colour = colour >> 4;
@@ -714,7 +714,7 @@ void SuperFX::plot(Byte x, Byte y) {
       colour = colour & 0x0F;
    }
 
-   Word offset = (y << 5) + (x >> 3);
+   u16 offset = (y << 5) + (x >> 3);
    if (offset != pixel_cache[0].offset) {
       flush_pixel_cache(pixel_cache[1]);
       pixel_cache[1] = pixel_cache[0];
@@ -732,7 +732,7 @@ void SuperFX::plot(Byte x, Byte y) {
    }
 }
 
-Byte SuperFX::rpix(Byte x, Byte y) {
+u8 SuperFX::rpix(u8 x, u8 y) {
    flush_pixel_cache(pixel_cache[1]);
    flush_pixel_cache(pixel_cache[0]);
 
@@ -754,7 +754,7 @@ Byte SuperFX::rpix(Byte x, Byte y) {
 
    int bpp = 2 << (scmr.md - (scmr.md >> 1));
    int address = 0x700000 + (cn * (bpp << 3)) + (scbr << 10) + ((y & 0x07) * 2);
-   Byte data = 0x00;
+   u8 data = 0x00;
    x = (x & 7) ^ 7;
 
    for (int n = 0; n < bpp; n++) {
@@ -771,8 +771,8 @@ void SuperFX::flush_pixel_cache(PixelCache& cache) {
       return;
    }
 
-   Byte x = cache.offset << 3;
-   Byte y = cache.offset >> 5;
+   u8 x = cache.offset << 3;
+   u8 y = cache.offset >> 5;
 
    int cn;
    switch (por.obj ? 3 : scmr.ht) {
@@ -795,7 +795,7 @@ void SuperFX::flush_pixel_cache(PixelCache& cache) {
    
    for (int n = 0; n < bpp; n++) {
       int byte = ((n >> 1) << 4) + (n & 1);
-      Byte data = 0x00;
+      u8 data = 0x00;
       for (int x = 0; x < 8; x++) {
          data = data | (((cache.data[x] >> n) & 1) << x);
       }
@@ -837,7 +837,7 @@ void SuperFX::sync_rom_buffer() {
    }
 }
 
-Byte SuperFX::read_rom_buffer() {
+u8 SuperFX::read_rom_buffer() {
    sync_rom_buffer();
    return romdr;
 }
@@ -853,12 +853,12 @@ void SuperFX::sync_ram_buffer() {
    }
 }
 
-Byte SuperFX::read_ram_buffer(Word address) {
+u8 SuperFX::read_ram_buffer(u16 address) {
    sync_ram_buffer();
    return read(0x700000 + (rambr << 16) + address);
 }
 
-void SuperFX::write_ram_buffer(Word address, Byte data) {
+void SuperFX::write_ram_buffer(u16 address, u8 data) {
    sync_ram_buffer();
    ramcl = clsr ? 5 : 6;
    ramar = address;
@@ -869,9 +869,9 @@ size_t SuperFX::get_rom_size() {
    return cartridge->get_rom_size();
 }
 
-Byte SuperFX::read_rom(unsigned int address, bool snes_accessing) {
+u8 SuperFX::read_rom(unsigned int address, bool snes_accessing) {
    if (sfr.g && scmr.ron && snes_accessing) {
-      const Byte vector[16] = {
+      const u8 vector[16] = {
          0x00, 0x01, 0x00, 0x01, 0x04, 0x01, 0x00, 0x01,
          0x00, 0x01, 0x08, 0x01, 0x00, 0x01, 0x0c, 0x01
       };
@@ -880,22 +880,22 @@ Byte SuperFX::read_rom(unsigned int address, bool snes_accessing) {
    return cartridge->get_from_rom(address & rom_mask);
 }
 
-void SuperFX::write_rom(unsigned int address, Byte data) {
+void SuperFX::write_rom(unsigned int address, u8 data) {
    return;
 }
 
-Byte SuperFX::read_ram(unsigned int address, bool snes_accessing) {
+u8 SuperFX::read_ram(unsigned int address, bool snes_accessing) {
    if (sfr.g && scmr.ran && snes_accessing) {
       return get_open_bus();
    }
    return gpram[address & ram_mask];
 }
 
-void SuperFX::write_ram(unsigned int address, Byte data) {
+void SuperFX::write_ram(unsigned int address, u8 data) {
    gpram[address & ram_mask] = data;
 }
 
-Byte SuperFX::read_io(unsigned int address) {
+u8 SuperFX::read_io(unsigned int address) {
    address = 0x3000 | address & 0x3FF;
 
    if (address >= 0x3100 && address <= 0x32FF) {
@@ -910,7 +910,7 @@ Byte SuperFX::read_io(unsigned int address) {
          return sfr >> 0;
       }
       case 0x3031: {
-         Byte rr = sfr >> 8;
+         u8 rr = sfr >> 8;
          sfr.irq = 0;
          cpu->unsignal_superfx_irq();
          return rr;
@@ -944,7 +944,7 @@ Byte SuperFX::read_io(unsigned int address) {
    return get_open_bus();
 }
 
-void SuperFX::write_io(unsigned int address, Byte data) {
+void SuperFX::write_io(unsigned int address, u8 data) {
    address = 0x3000 | (address & 0x3FF);
    if (address >= 0x3100 && address <= 0x32FF) {
       return write_cache(address - 0x3100, data);
@@ -1047,7 +1047,7 @@ bool SuperFX::handles(SNESAddress address) {
    return false;
 }
 
-Byte SuperFX::snes_side_read(SNESAddress address) {
+u8 SuperFX::snes_side_read(SNESAddress address) {
    if (revision == SuperFXRevision::MARIO) {
       bool gsu_io = ((address.bank >= 0x00 && address.bank <= 0x3F) || (address.bank >= 0x80 && address.bank <= 0xBF)) && address.offset >= 0x3000 && address.offset <= 0x347F;
       bool gpram_area = (address.bank >= 0x60 && address.bank <= 0x7D) || (address.bank >= 0xE0 && address.bank <= 0xFF);
@@ -1089,7 +1089,7 @@ Byte SuperFX::snes_side_read(SNESAddress address) {
    return get_open_bus();
 }
 
-void SuperFX::snes_side_write(SNESAddress address, Byte data) {
+void SuperFX::snes_side_write(SNESAddress address, u8 data) {
    if (revision == SuperFXRevision::MARIO) {
       bool gsu_io = ((address.bank >= 0x00 && address.bank <= 0x3F) || (address.bank >= 0x80 && address.bank <= 0xBF)) && address.offset >= 0x3000 && address.offset <= 0x347F;
       bool gpram_area = (address.bank >= 0x60 && address.bank <= 0x7D) || (address.bank >= 0xE0 && address.bank <= 0xFF);

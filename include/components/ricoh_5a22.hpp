@@ -54,34 +54,34 @@ class DMA;
 // The Multiplier's RDMPYH and RDMPYL also store the remainder of division by the divisor
 // Multiplication takes 16 half-cycles of the CPU (not master clock)
 struct Multiplier {
-	Byte WRMPYA, WRMPYB; // first and second number to multiply, writing to WRDMPYB starts multiplication
-	Byte RDMPYH, RDMPYL; // read result of multiplication
-	CycleCount half_cycles_since_init = 0; // Only when this is 0 can 
+	u8 WRMPYA, WRMPYB; // first and second number to multiply, writing to WRDMPYB starts multiplication
+	u8 RDMPYH, RDMPYL; // read result of multiplication
+	i64 half_cycles_since_init = 0; // Only when this is 0 can 
 	bool completed = true;
 };
 
 // Division takes 32 half-cycles of the CPU (not master clock)
 struct Divisor {
-	Byte WRDIVH, WRDIVL; // dividend
-	Byte WRDIVB; // divisor (starts division)
-	Byte RDDIVH, RDDIVL; // read result of division
-	CycleCount half_cycles_since_init = 0;
+	u8 WRDIVH, WRDIVL; // dividend
+	u8 WRDIVB; // divisor (starts division)
+	u8 RDDIVH, RDDIVL; // read result of division
+	i64 half_cycles_since_init = 0;
 	bool completed = true;
 };
 
 // Adding interrupt registers
 struct CPURegisters {
-	Byte HVBJOY;
-	Byte NMITIMEN;
-	Byte HTIMEL, HTIMEH;
-	Byte VTIMEL, VTIMEH;
-	Byte RDNMI, TIMEUP;
-	Byte WRIO = 0xFF;
+	u8 HVBJOY;
+	u8 NMITIMEN;
+	u8 HTIMEL, HTIMEH;
+	u8 VTIMEL, VTIMEH;
+	u8 RDNMI, TIMEUP;
+	u8 WRIO = 0xFF;
 };
 
 struct Port {
-	Word shift = 0xFFFF;
-	Byte bits_read = 16;
+	u16 shift = 0xFFFF;
+	u8 bits_read = 16;
 };
 
 struct Serial {
@@ -94,23 +94,23 @@ class Ricoh5A22 final : public CPU {
 public:
 	explicit Ricoh5A22(Bus* bus);
 
-	void add_cycles(CycleCount cycles) override;
+	void add_cycles(i64 cycles) override;
 
 	void run_half_cycle();
 	void tick_cpu();
 	void tick_component() override;
-	CycleCount get_cycle() override;
-	TickCount get_tick() override;
+	i64 get_cycle() override;
+	i64 get_tick() override;
 
 	void reset() override;
 	void initialise() override;
 
-	Byte read(Address addr) override;
+	u8 read(u32 addr) override;
 
-	void write(Address addr, Byte value) override;
+	void write(u32 addr, u8 value) override;
 
 	// Handles CPU ports!
-	Byte communication_read(SNESAddress addr) override {
+	u8 communication_read(SNESAddress addr) override {
 		// Multiplier
 		if (addr.offset == RDMPYL_ADDRESS) { return multiplier.RDMPYL; }
 		if (addr.offset == RDMPYH_ADDRESS) { return multiplier.RDMPYH; }
@@ -121,13 +121,13 @@ public:
 
 		// Interrupt handling
 		if (addr.offset == RDNMI_ADDRESS) {
-			Byte value = mregs.RDNMI;
+			u8 value = mregs.RDNMI;
 			mregs.RDNMI = mregs.RDNMI & 0x7F;
 			nmi_line = false;
 			return value;
 		}
 		if (addr.offset == TIMEUP_ADDRESS) {
-			Byte value = mregs.TIMEUP;
+			u8 value = mregs.TIMEUP;
 			mregs.TIMEUP = mregs.TIMEUP & 0x7F;
 			irq_line = false;
 			return value;
@@ -154,7 +154,7 @@ public:
 
 		// Miscellaneous
 		if (addr.offset == JOYSER0_ADDRESS) {
-			Byte data1;
+			u8 data1;
 			if (joyser.strobe) {
 				data1 = (get_controller_word(1) >> 15) & 1;
 			} else if (joyser.port1.bits_read < 16) {
@@ -163,11 +163,11 @@ public:
 			} else {
 				data1 = 1;
 			}
-			Byte data2 = 1;
+			u8 data2 = 1;
 			return (get_open_bus() & 0xFC) | (data2 << 1) | data1;
 		}
 		if (addr.offset == JOYSER1_ADDRESS) {
-			Byte data1;
+			u8 data1;
 			if (joyser.strobe) {
 				data1 = (get_controller_word(2) >> 15 & 1);
 			} else if (joyser.port2.bits_read < 16) {
@@ -176,7 +176,7 @@ public:
 			} else {
 				data1 = 1;
 			}
-			Byte data2 = 1;
+			u8 data2 = 1;
 			return (get_open_bus() & 0xE0) | 0x1C | (data2 << 1) | data1;
 		}
 
@@ -185,7 +185,7 @@ public:
 
 	void set_fastrom_from_bus(bool fastrom_enabled);
 
-	void communication_write(SNESAddress addr, Byte value) override {
+	void communication_write(SNESAddress addr, u8 value) override {
 		if (addr.offset == MEMSEL_ADDRESS) {
 			fastrom_enabled = value & 1;
 			set_fastrom_from_bus(fastrom_enabled);
@@ -205,7 +205,7 @@ public:
 		if (addr.offset == WRMPYB_ADDRESS) { multiplier.WRMPYB = value; }
 			
 		if (addr.offset == WRMPYB_ADDRESS) {
-			uint16_t result = multiplier.WRMPYA * multiplier.WRMPYB;
+			u16 result = multiplier.WRMPYA * multiplier.WRMPYB;
 			multiplier.RDMPYL = get_lo(result);
 			multiplier.RDMPYH = get_hi(result);
 
@@ -219,10 +219,10 @@ public:
 		if (addr.offset == WRDIVB_ADDRESS) { divisor.WRDIVB = value; }
 
 		if (addr.offset == WRDIVB_ADDRESS) {
-			uint16_t dividend_value = (divisor.WRDIVH << 8) | divisor.WRDIVL;
-			uint8_t divisor_value = divisor.WRDIVB;
-			uint16_t result = 0xFFFF;
-			uint16_t remainder = dividend_value;
+			u16 dividend_value = (divisor.WRDIVH << 8) | divisor.WRDIVL;
+			u8 divisor_value = divisor.WRDIVB;
+			u16 result = 0xFFFF;
+			u16 remainder = dividend_value;
 			if (divisor_value != 0) {
 				result = (unsigned int)(dividend_value) / (unsigned int)(divisor_value);
 				remainder = dividend_value % divisor_value;
@@ -239,7 +239,7 @@ public:
 
 		// Interrupts
 		if (addr.offset == NMITIMEN_ADDRESS) {
-			Byte irq_bits_before = mregs.NMITIMEN & 0x30;
+			u8 irq_bits_before = mregs.NMITIMEN & 0x30;
 			nmi_enabled = (((value >> 7) & 0b1) == 1);
 			auto_read_enabled = ((value & 0b1) == 1);
 			if (auto_read_enabled) {
@@ -311,7 +311,7 @@ public:
 		irq_line = false;
 	}
 
-	void set_hvbjoy_flag(Byte bit_mask, bool set) {
+	void set_hvbjoy_flag(u8 bit_mask, bool set) {
 		if (set) {
 			mregs.HVBJOY = mregs.HVBJOY | bit_mask;
 		} else {
@@ -338,23 +338,23 @@ public:
 	bool get_flag_Z() { return (regs.P >> 1) & 0b1;  }
 	bool get_flag_C() { return  regs.P       & 0b1;  }
 
-	void set_flag_N(Byte value) {
+	void set_flag_N(u8 value) {
 		condition = ( ( (value >> 7) & 0b1 ) == 1);
 		regs.P = condition ? set_bit(regs.P, 7) : clear_bit(regs.P, 7); 
 	}
 
-	void set_flag_V(Byte value) { return; }
-	void set_flag_M(Byte value) { return; }
-	void set_flag_X(Byte value) { return; }
-	void set_flag_D(Byte value) { return; }
-	void set_flag_I(Byte value) { return; }
+	void set_flag_V(u8 value) { return; }
+	void set_flag_M(u8 value) { return; }
+	void set_flag_X(u8 value) { return; }
+	void set_flag_D(u8 value) { return; }
+	void set_flag_I(u8 value) { return; }
 
-	void set_flag_Z(Word value) {
+	void set_flag_Z(u16 value) {
 		condition = (value == 0);
 		regs.P = condition ? set_bit(regs.P, 1) : clear_bit(regs.P, 1); 
 	}
 
-	void set_flag_C(Byte value) { return; }
+	void set_flag_C(u8 value) { return; }
 
 	void set_flag_N() { regs.P = set_bit(regs.P, 7); }
 	void set_flag_V() { regs.P = set_bit(regs.P, 6); }
@@ -379,9 +379,9 @@ public:
 	bool get_flag_H() { return false; }
 	bool get_flag_B() { return false; }
 
-	void set_flag_P(Byte value) { return; }
-	void set_flag_H(Byte value) { return; }
-	void set_flag_B(Byte value) { return; }
+	void set_flag_P(u8 value) { return; }
+	void set_flag_H(u8 value) { return; }
+	void set_flag_B(u8 value) { return; }
 
 	void set_flag_P() { return; }
 	void set_flag_H() { return; }
@@ -394,8 +394,8 @@ public:
 	void enable_test_mode();
 	void disable_test_mode();
 	void reset_test_memory();
-	Byte test_peek(Address addr);
-	void test_poke(Address addr, Byte value);
+	u8 test_peek(u32 addr);
+	void test_poke(u32 addr, u8 value);
 
 	void connect_renderer(Renderer* renderer) {
 		this->renderer = renderer;
@@ -410,19 +410,19 @@ public:
 
 	void log_ricoh();
 
-	CycleCount cycle;
+	i64 cycle;
 
-	Byte get_open_bus();
+	u8 get_open_bus();
 
-	Word get_controller_word(int port) {
+	u16 get_controller_word(int port) {
 		if (!renderer) {
 			return 0xFFFF;
 		}
 		if (port == 1) {
-			return ((Word)(renderer->get_joypad(JOY1H_ADDRESS)) << 8) | renderer->get_joypad(JOY1L_ADDRESS);
+			return ((u16)(renderer->get_joypad(JOY1H_ADDRESS)) << 8) | renderer->get_joypad(JOY1L_ADDRESS);
 		}
 		if (port == 2) {
-			return ((Word)(renderer->get_joypad(JOY2H_ADDRESS)) << 8) | renderer->get_joypad(JOY2L_ADDRESS);
+			return ((u16)(renderer->get_joypad(JOY2H_ADDRESS)) << 8) | renderer->get_joypad(JOY2L_ADDRESS);
 		}
 		return 0x0000;
 	}
@@ -430,8 +430,8 @@ private:
 
 	Bus* bus = nullptr;
 
-	CycleCount instruction_cycle; 
-	TickCount tick;
+	i64 instruction_cycle; 
+	i64 tick;
 
 	Multiplier multiplier;
 	Divisor divisor;
@@ -442,7 +442,7 @@ private:
 	PPU* ppu = nullptr;
 	DMA* dma = nullptr;
 
-	Byte irq_mode;
+	u8 irq_mode;
 	bool nmi_line = false;
 	bool irq_line = false;
 	bool nmi_enabled = false;
@@ -453,16 +453,16 @@ private:
 	// For disassembler
 	bool was_interrupt = false;
 	bool interrupt_type = false; // false = NMI, true = IRQ
-	Word prev_PC = 0;
-	Byte prev_PB = 0;
-	Byte prev_opcode = 0;
+	u16 prev_PC = 0;
+	u8 prev_PB = 0;
+	u8 prev_opcode = 0;
 
 	bool new_operand = false;
 
 	int executed = 0;
 
 	// Just because I am curious...
-	std::vector<Byte> emulation_mode_executed {}; // Seeing which emulation mode instructions actually get executed
+	std::vector<u8> emulation_mode_executed {}; // Seeing which emulation mode instructions actually get executed
 
 	Serial joyser;
 };

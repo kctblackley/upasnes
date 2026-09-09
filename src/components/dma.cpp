@@ -4,11 +4,11 @@
 #include "bus.hpp"
 #include "ppu.hpp"
 
-Byte DMA::get_open_bus() {
+u8 DMA::get_open_bus() {
 	return bus->get_open_bus();
 }
 
-void DMA::set_open_bus(Byte value) {
+void DMA::set_open_bus(u8 value) {
 	bus->set_open_bus(value);
 }
 
@@ -66,9 +66,9 @@ void DMA::hdma_transfer() {
 			if (unit.transfer_this) {
 				//std::cout << "TRANSFER OCCURRING\n";
 				int unit_size = transfer_units[unit.unit_type].size;
-				Address a_bus = unit.a_bus;
+				u32 a_bus = unit.a_bus;
 				for (int i = 0; i < unit_size; i++) {
-					uint8_t b_bus = get_b_bus(unit.b_bus, unit.unit_type, i);
+					u8 b_bus = get_b_bus(unit.b_bus, unit.unit_type, i);
 					if (b_to_a) {
 						transfer_b_to_a(b_bus, a_bus);
 					} else {
@@ -88,7 +88,7 @@ void DMA::hdma_transfer() {
 	cpu->add_cycles(penalty);
 }
 
-uint8_t DMA::get_b_bus(Byte bbad, Byte transfer_unit_select, uint32_t byte_tick) {
+u8 DMA::get_b_bus(u8 bbad, u8 transfer_unit_select, u32 byte_tick) {
 	TransferUnit unit = transfer_units[transfer_unit_select];
 	int idx = byte_tick & (unit.size - 1);
 	int offset = unit.pattern[idx];
@@ -124,9 +124,9 @@ void DMA::tick_gpdma() {
 				}
 
 				/*std::cout << "Transfer direction: "   << std::dec << (int)gpdma.transfer_direction   << "\n";
-				std::cout << "A-Bus Address Step: "   << std::hex << (int)gpdma.a_bus_address_step   << "\n";
+				std::cout << "A-Bus u32 Step: "   << std::hex << (int)gpdma.a_bus_address_step   << "\n";
 				std::cout << "Transfer Unit Select: " << std::dec << (int)gpdma.transfer_unit_select << "\n";
-				std::cout << "B-Bus Address: "        << std::hex << (int)(0x2100 | gpdma.bbad)      << "\n";
+				std::cout << "B-Bus u32: "        << std::hex << (int)(0x2100 | gpdma.bbad)      << "\n";
 				std::cout << "Bytes to transfer "     << std::hex << (int)gpdma.byte_counter         << "\n";
 				std::cout << "Channel number: "       << std::dec << (int)gpdma.channel_number       << "\n";*/
 
@@ -139,8 +139,8 @@ void DMA::tick_gpdma() {
 				//gpdma.cycle = 8; // what it should be if not the final transfer byte
 				// for the final transfer byte
 
-				Address a_bus = gpdma.ch->get_a_bus();
-				uint8_t b_bus = get_b_bus(gpdma.bbad, gpdma.transfer_unit_select, gpdma.byte_tick);
+				u32 a_bus = gpdma.ch->get_a_bus();
+				u8 b_bus = get_b_bus(gpdma.bbad, gpdma.transfer_unit_select, gpdma.byte_tick);
 
 				if (gpdma.a_bus_address_step == 0) {
 					gpdma.ch->increment_a_bus();
@@ -189,12 +189,12 @@ void DMA::tick_gpdma() {
 	}
 }
 
-Byte DMA::dma_read(SNESAddress addr) {
-	Address address = (addr.bank << 16) | addr.offset;
+u8 DMA::dma_read(SNESAddress addr) {
+	u32 address = (addr.bank << 16) | addr.offset;
 	return bus->read(address, true);
 }
 
-void DMA::dma_write(SNESAddress addr, Byte value) {
-	Address address = (addr.bank << 16) | addr.offset;
+void DMA::dma_write(SNESAddress addr, u8 value) {
+	u32 address = (addr.bank << 16) | addr.offset;
 	bus->write(address, value, true);
 }

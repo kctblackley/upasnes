@@ -21,15 +21,15 @@ void Bus::wram_refresh_pause() {
 	cpu->add_cycles(WRAM_REFRESH_PAUSE_CYCLES);
 }
 
-bool Bus::is_cartridge_mapped(Address addr) {
+bool Bus::is_cartridge_mapped(u32 addr) {
 	return route(split_address(addr)) == cartridge.get();
 }
 
-Byte Bus::get_open_bus() {
+u8 Bus::get_open_bus() {
 	return cpu->get_open_bus();
 }
 
-void Bus::set_open_bus(Byte value) {
+void Bus::set_open_bus(u8 value) {
 	cpu->set_open_bus(value);
 }
 
@@ -101,7 +101,7 @@ Component* Bus::system_area_component(SNESAddress address) {
 }
 
 inline Component* Bus::route_to_component(SNESAddress address) {
-	Quadrant quadrant = get_quadrant(address.bank);
+	u8 quadrant = get_quadrant(address.bank);
 	switch (quadrant) {
 	case 1:
 	case 3:
@@ -115,7 +115,7 @@ inline Component* Bus::route_to_component(SNESAddress address) {
 }
 
 inline Store* Bus::route(SNESAddress address) {
-	Quadrant quadrant = get_quadrant(address.bank);
+	u8 quadrant = get_quadrant(address.bank);
 	switch(quadrant) {
 	case 1:
 		return system_area(address);
@@ -139,7 +139,7 @@ inline Store* Bus::route(SNESAddress address) {
 	return open_bus.get();
 }
 
-CycleCount Bus::component_penalty(SNESAddress address) {
+i64 Bus::component_penalty(SNESAddress address) {
 	if (address.offset >= CPU_PORTS_SECTION && address.offset < CPU_PORTS_NON_PENALTY_SECTION) {
 		return CPU_PORTS_PENALTY;
 	}
@@ -149,7 +149,7 @@ CycleCount Bus::component_penalty(SNESAddress address) {
 	return WRAM_PENALTY;
 }
 
-void Bus::write(Address addr, Byte value, bool is_dma) {
+void Bus::write(u32 addr, u8 value, bool is_dma) {
 	if (test_mode) {
 		test_memory[addr & 0xFFFFFF] = value;
 		return;
@@ -180,7 +180,7 @@ void Bus::write(Address addr, Byte value, bool is_dma) {
 	}
 }
 
-Byte Bus::read(Address addr, bool is_dma) {
+u8 Bus::read(u32 addr, bool is_dma) {
 	if (test_mode) {
 		auto it = test_memory.find(addr & 0xFFFFFF);
 		return it != test_memory.end() ? it->second : 0x00;
@@ -230,11 +230,11 @@ void Bus::reset_test_memory() {
 	test_memory.clear();
 }
 
-Byte Bus::test_peek(Address addr) {
+u8 Bus::test_peek(u32 addr) {
 	auto it = test_memory.find(addr & 0xFFFFFF);
 	return it != test_memory.end() ? it->second : 0x00;
 }
 
-void Bus::test_poke(Address addr, Byte value) {
+void Bus::test_poke(u32 addr, u8 value) {
 	test_memory[addr & 0xFFFFFF] = value;
 }

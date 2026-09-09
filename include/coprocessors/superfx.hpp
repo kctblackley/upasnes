@@ -29,7 +29,7 @@ enum class WaitingState {
 };
 
 struct ALUResult {
-	Word value;
+	u16 value;
 	bool carry;
 };
 
@@ -39,17 +39,17 @@ class SNES;
 
 /*D*/
 struct PixelCache {
-	Word offset;
-	Byte bitpend;
-	Byte data[8];
+	u16 offset;
+	u8 bitpend;
+	u8 data[8];
 };
 /*D*/
 
 // Inspired by bsnes, easy handling for registers for flags
 
 struct Bit {
-	Word* data;
-	Word mask;
+	u16* data;
+	u16 mask;
 
 	operator bool() const {
 		return (*data & mask) != 0;
@@ -107,13 +107,13 @@ public:
 	}
 
 	/*D*/
-	Byte read_rom(unsigned int address, bool snes_accessing = false);
-	void write_rom(unsigned int address, Byte data);
-	Byte read_ram(unsigned int address, bool snes_accessing = false);
-	void write_ram(unsigned int address, Byte data);
+	u8 read_rom(unsigned int address, bool snes_accessing = false);
+	void write_rom(unsigned int address, u8 data);
+	u8 read_ram(unsigned int address, bool snes_accessing = false);
+	void write_ram(unsigned int address, u8 data);
 
-	Byte read_io(unsigned int address);
-	void write_io(unsigned int address, Byte data);
+	u8 read_io(unsigned int address);
+	void write_io(unsigned int address, u8 data);
 	/*D*/
 
 	size_t get_rom_size();
@@ -130,23 +130,23 @@ public:
 	void power();
 
 	void stop();
-	Byte colour(Byte source);
-	void plot(Byte x, Byte y);
-	Byte rpix(Byte x, Byte y);
+	u8 colour(u8 source);
+	void plot(u8 x, u8 y);
+	u8 rpix(u8 x, u8 y);
 	void flush_pixel_cache(PixelCache& cache);
 
 	// Memory map
 
-	Byte read(Address address);
-	void write(Address address, Byte data);
+	u8 read(u32 address);
+	void write(u32 address, u8 data);
 
-	Byte read_opcode(Word address);
-	Byte peekpipe();
-	Byte pipe();
+	u8 read_opcode(u16 address);
+	u8 peekpipe();
+	u8 pipe();
 
 	void flush_cache();
-	Byte read_cache(Word address);
-	void write_cache(Word address, Byte data);
+	u8 read_cache(u16 address);
+	void write_cache(u16 address, u8 data);
 
 	// Instructions
 
@@ -192,7 +192,7 @@ public:
 	void i_getb();
 	void i_iwt_lm_sm(unsigned int n);
 
-	void instruction(Byte opcode);
+	void instruction(u8 opcode);
 
 	/*D*/
 	void build_game_pak_ram(int checksum) {
@@ -222,7 +222,7 @@ public:
 	}
 	/*D*/
 
-	Byte get_open_bus();
+	u8 get_open_bus();
 
 	/*D*/
 	void connect_cpu(Ricoh5A22* cpu) {
@@ -235,8 +235,8 @@ public:
 	}
 	/*D*/
 
-	CycleCount get_coprocessor_cycle() {
-		return (int64_t)cycle;
+	i64 get_coprocessor_cycle() {
+		return (i64)cycle;
 	}
 
 	/*D*/
@@ -247,17 +247,17 @@ public:
 
 	void step(int clocks);
 	void sync_rom_buffer();
-	Byte read_rom_buffer();
+	u8 read_rom_buffer();
 	void update_rom_buffer();
 	void sync_ram_buffer();
-	Byte read_ram_buffer(Word address);
-	void write_ram_buffer(Word address, Byte data);
+	u8 read_ram_buffer(u16 address);
+	void write_ram_buffer(u16 address, u8 data);
 
 	// SNES-side memory map
 	bool handles(SNESAddress address);
 
-	Byte snes_side_read(SNESAddress address);
-	void snes_side_write(SNESAddress address, Byte data);
+	u8 snes_side_read(SNESAddress address);
+	void snes_side_write(SNESAddress address, u8 data);
 
 private:
 	double cycle = 0;
@@ -268,8 +268,8 @@ private:
 	SuperFXRevision revision = SuperFXRevision::None;
 
 	size_t gpram_size = LARGE_GAME_PAK_RAM_SIZE;
-	std::vector<Byte> gpram {}; // gpram means 'Game Pak RAM'
-	std::vector<Byte> backup_ram {};
+	std::vector<u8> gpram {}; // gpram means 'Game Pak RAM'
+	std::vector<u8> backup_ram {};
 
 	bool hirom_mapper = false;
 
@@ -278,19 +278,19 @@ private:
 
 	// Registers (implementation inspired by bsnes)
 
-	Byte pipeline;
-	Word ramaddr;
+	u8 pipeline;
+	u16 ramaddr;
 
 	// Major credits to bsnes for this! This idea made my life easier. From gsu/registers.hpp
 	struct Register {
-		Word data = 0;
+		u16 data = 0;
 		bool modified = false;
 
-		operator Word() const {
+		operator u16() const {
 			return data;
 		}
 
-		Word assign(Word value) {
+		u16 assign(u16 value) {
 			modified = true;
 			data = value;
 			return data;
@@ -298,32 +298,32 @@ private:
 
 		auto operator++() { return assign(data + 1); }
 		auto operator--() { return assign(data - 1); }
-		auto operator=(Word i) { return assign(i); }
+		auto operator=(u16 i) { return assign(i); }
 		auto operator=(const Register& value) { return assign(value); }
 		auto operator++(int) { auto old = data; assign(data + 1); return old; }
 		auto operator--(int) { auto old = data; assign(data - 1); return old; }
-		auto operator+=(Word v) { return assign(data + v); }
+		auto operator+=(u16 v) { return assign(data + v); }
 		
 		Register() = default;
 		Register(const Register&) = delete;
 	} r[16];
 
-	Byte pbr;
-	Byte rombr;
+	u8 pbr;
+	u8 rombr;
 	bool rambr;
-	Word cbr;
-	Byte scbr;
-	Byte colr;
+	u16 cbr;
+	u8 scbr;
+	u8 colr;
 	bool bramr;
-	Byte vcr;
+	u8 vcr;
 	bool clsr;
 
-	Byte romdr;
-	Word ramar;
-	Byte ramdr;
+	u8 romdr;
+	u16 ramar;
+	u8 ramdr;
 
-	Word sreg;
-	Word dreg;
+	u16 sreg;
+	u16 dreg;
 
 	Register& sr() { return r[sreg]; }
 	Register& dr() { return r[dreg]; }
@@ -339,27 +339,27 @@ private:
 
 	// SFR
 	struct SFR {
-		Word data = 0;
+		u16 data = 0;
 
-		Bit z    {&data, Word(1) << 1};
-		Bit cy   {&data, Word(1) << 2};
-		Bit s    {&data, Word(1) << 3};
-		Bit ov   {&data, Word(1) << 4};
-		Bit g    {&data, Word(1) << 5};
-		Bit r    {&data, Word(1) << 6};
+		Bit z    {&data, u16(1) << 1};
+		Bit cy   {&data, u16(1) << 2};
+		Bit s    {&data, u16(1) << 3};
+		Bit ov   {&data, u16(1) << 4};
+		Bit g    {&data, u16(1) << 5};
+		Bit r    {&data, u16(1) << 6};
 
-		Bit alt1 {&data, Word(1) << 8};
-		Bit alt2 {&data, Word(1) << 9};
-		Bit il   {&data, Word(1) << 10};
-		Bit ih   {&data, Word(1) << 11};
-		Bit b    {&data, Word(1) << 12};
-		Bit irq  {&data, Word(1) << 15};
+		Bit alt1 {&data, u16(1) << 8};
+		Bit alt2 {&data, u16(1) << 9};
+		Bit il   {&data, u16(1) << 10};
+		Bit ih   {&data, u16(1) << 11};
+		Bit b    {&data, u16(1) << 12};
+		Bit irq  {&data, u16(1) << 15};
 
-		constexpr operator Word() const {
+		constexpr operator u16() const {
 			return data & 0x9F7E;
 		}
 
-		SFR& operator=(Word value) {
+		SFR& operator=(u16 value) {
 			data = value;
 			return *this;
 		}
@@ -384,11 +384,11 @@ private:
 		bool ran;
 		int md;
 
-		operator Byte() const {
+		operator u8() const {
 			return ((ht >> 1) << 5) | (ron << 4) | (ran << 3) | ((ht & 1) << 2) | (md);
 		}
 
-		SCMR& operator=(Byte data) {
+		SCMR& operator=(u8 data) {
 			ht  = (bool)(data & 0x20) << 1;
 			ht  = ht | (bool)(data & 0x04) << 0;
 			ron = data & 0x10;
@@ -407,11 +407,11 @@ private:
 		bool dither;
 		bool transparent;
 
-		operator Byte() const {
+		operator u8() const {
 			return (obj << 4) | (freeze_high << 3) | (high_nibble << 2) | (dither << 1) | (transparent);
 		}
 
-		POR& operator=(Word data) {
+		POR& operator=(u16 data) {
 			obj = data & 0x10;
 			freeze_high = data & 0x08;
 			high_nibble = data & 0x04;
@@ -428,11 +428,11 @@ private:
 		bool irq;
 		bool ms0;
 
-		operator Byte() const {
+		operator u8() const {
 			return (irq << 7) | (ms0 << 5);
 		}
 
-		CFGR& operator=(Byte data) {
+		CFGR& operator=(u8 data) {
 			irq = data & 0x80;
 			ms0 = data & 0x20;
 			return *this;
@@ -442,7 +442,7 @@ private:
 	// Cache
 
 	struct Cache {
-		Byte buffer[512];
+		u8 buffer[512];
 		bool valid[32];
 	} cache;
 

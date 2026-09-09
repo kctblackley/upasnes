@@ -34,12 +34,12 @@ using Optable = std::array<Instruction<CpuT>*, 258>;
 template<typename CpuT>
 struct Opcode {
 	HandlerFn<CpuT> function;
-	CycleCount idx;
+	i64 idx;
 	bool skipped;
 };
 
 template<typename CpuT>
-Opcode<CpuT> get_opcode(const Optable<CpuT>& optable, Word opcode, CycleCount& idx, CpuT& cpu) {
+Opcode<CpuT> get_opcode(const Optable<CpuT>& optable, u16 opcode, i64& idx, CpuT& cpu) {
 	Instruction<CpuT>& instruction = *optable[opcode];
 	
 	Handler<CpuT>* handler = nullptr;

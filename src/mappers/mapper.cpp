@@ -5,7 +5,7 @@
 constexpr int SUPERFX_SRAM_SIZE = 8192;
 
 int superfx_sram_size(CartridgeHardware* hardware, CartridgeHeader* header) {
-	Word checksum = header->checksum;
+	u16 checksum = header->checksum;
 	if (checksum == 0xD7C8 || checksum == 0x5F3F || checksum == 0x132C) { // These values are the checksum values for Stunt Race FX, Star Fox 2, and Yoshi's Island (Winter Gold not supported as it is not an NTSC game)
 		return SUPERFX_SRAM_SIZE;
 	} else {
@@ -14,7 +14,7 @@ int superfx_sram_size(CartridgeHardware* hardware, CartridgeHeader* header) {
 }
 
 template <class MapperT>
-void Mapper<MapperT>::load_sram(Byte ram_size, const std::string& game_name, CartridgeHardware* hardware, CartridgeHeader* header) {
+void Mapper<MapperT>::load_sram(u8 ram_size, const std::string& game_name, CartridgeHardware* hardware, CartridgeHeader* header) {
 	this->game_name = game_name;
 
 	size_t sram_size = 0;
@@ -46,7 +46,7 @@ void Mapper<MapperT>::load_sram(Byte ram_size, const std::string& game_name, Car
 }
 
 template <class MapperT>
-Byte Mapper<MapperT>::get_open_bus() {
+u8 Mapper<MapperT>::get_open_bus() {
 	return cpu->get_open_bus();
 }
 

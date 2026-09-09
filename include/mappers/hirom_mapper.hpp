@@ -9,7 +9,7 @@ public:
 	}
 
 protected:
-	std::optional<Address> rom_idx(SNESAddress address) const {
+	std::optional<u32> rom_idx(SNESAddress address) const {
 		if ((address.bank >= 0x40 && address.bank <= 0x7D) || address.bank >= 0xC0) {
 			return ((address.bank & 0x3F) << 16) | address.offset;
 		}
@@ -21,7 +21,7 @@ protected:
 		return std::nullopt;
 	}
 
-	std::optional<Address> sram_idx(SNESAddress address) const {
+	std::optional<u32> sram_idx(SNESAddress address) const {
 		if (!( (address.bank >= 0x20 && address.bank <= 0x3F) || (address.bank >= 0xA0 && address.bank <= 0xBF) )) {
 			return std::nullopt;
 		}

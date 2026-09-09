@@ -97,39 +97,39 @@
 #define STAT77_ADDRESS 0x213E
 #define STAT78_ADDRESS 0x213F
 
-static int16_t signed_13(uint16_t value) {
+static i16 signed_13(u16 value) {
 	value = value & 0x1FFF;
 
 	if (value & 0x1000) {
 		value = value | 0xE000;
 	}
 
-	return static_cast<int16_t>(value);
+	return static_cast<i16>(value);
 }
 
 struct Priority {
-	uint8_t S0, S1, S2, S3; // sprite priority
-	uint8_t L1, L2, L3, L4; // low BG priority
-	uint8_t H1, H2, H3, H4; // high BG priority
+	u8 S0, S1, S2, S3; // sprite priority
+	u8 L1, L2, L3, L4; // low BG priority
+	u8 H1, H2, H3, H4; // high BG priority
 };
 
 struct Pixel {
 	bool transparent = false;
-	uint8_t priority = 0x00;
-	uint16_t colour = 0x00;
-	uint8_t layer = 0;
+	u8 priority = 0x00;
+	u16 colour = 0x00;
+	u8 layer = 0;
 	bool colour_math = false;
 };
 
 struct Object {
-	int16_t x_coordinate = 0;
-	Word y_coordinate = 0;
-	Word tile_number = 0;
-	Word attributes = 0;
+	i16 x_coordinate = 0;
+	u16 y_coordinate = 0;
+	u16 tile_number = 0;
+	u16 attributes = 0;
 
-	Byte priority_number = 0;
-	Byte palette = 0;
-	Byte priority = 0;
+	u8 priority_number = 0;
+	u8 palette = 0;
+	u8 priority = 0;
 
 	bool horizontal_flip = false;
 	bool vertical_flip = false;
@@ -151,36 +151,36 @@ struct SizePair {
 
 struct OAM {
 	// Internal registers
-	uint16_t oamadd;
-	uint16_t reload;
-	Byte latch;
+	u16 oamadd;
+	u16 reload;
+	u8 latch;
 
-	uint32_t first_base;
-	uint32_t second_base;
+	u32 first_base;
+	u32 second_base;
 	SizePair obj_size;
 
 	bool priority_rotation;
 
 	// OAM data
-	std::array<Byte, OAM_SIZE> data {};
+	std::array<u8, OAM_SIZE> data {};
 };
 
 struct CGRAM {
-	std::array<Word, CGRAM_SIZE> data {};
-	Byte cgram_address;
-	Byte cgram_latch;
+	std::array<u16, CGRAM_SIZE> data {};
+	u8 cgram_address;
+	u8 cgram_latch;
 	bool cgram_byte = false;
 };
 
 struct VRAM {
-	std::array<Word, VRAM_WORD_SIZE> data {};
+	std::array<u16, VRAM_WORD_SIZE> data {};
 
-	Byte address_increment; // Docs provide words, but will need to increment by bytes
-	Byte address_remapping;
+	u8 address_increment; // Docs provide words, but will need to increment by bytes
+	u8 address_remapping;
 	bool address_increment_mode;
 	
-	Word vram_latch;
-	Word vmadd;
+	u16 vram_latch;
+	u16 vmadd;
 };
 
 static constexpr SizePair size_table[8] = {
@@ -201,13 +201,13 @@ struct BG {
 	bool horizontal_tilemap_count = false;
 	bool vertical_tilemap_count = false;
 
-	Address tilemap_vram_address = 0x00;
-	Address word_address = 0x00;
+	u32 tilemap_vram_address = 0x00;
+	u32 word_address = 0x00;
 
-	Word bghofs = 0x00;
-	Word bgvofs = 0x00;
+	u16 bghofs = 0x00;
+	u16 bgvofs = 0x00;
 
-	Byte hofs_latch = 0x00;
+	u8 hofs_latch = 0x00;
 
 	bool sub_screen = false;
 	bool main_screen = false;
@@ -220,16 +220,16 @@ struct BG {
 	bool window2_inverted = false;;
 	bool window2_enabled = false;
 
-	Byte bpp = 2;
+	u8 bpp = 2;
 
-	Byte mask_logic = 0x00;
+	u8 mask_logic = 0x00;
 
 	bool enable_colour_math = false;
 
 	std::array<Pixel, 512> scanline;
 	std::array<Pixel, 512> main_scanline;
 	std::array<Pixel, 512> sub_scanline;
-	std::vector<uint32_t> framebuffer;
+	std::vector<u32> framebuffer;
 
 	int layer;
 };
@@ -246,14 +246,14 @@ struct ObjectLayer {
 	bool window2_inverted = false;;
 	bool window2_enabled = false;
 
-	Byte mask_logic = 0x00;
+	u8 mask_logic = 0x00;
 
 	bool enable_colour_math = false;
 
 	std::array<Pixel, 512> scanline;
 	std::array<Pixel, 512> main_scanline;
 	std::array<Pixel, 512> sub_scanline;
-	std::vector<uint32_t> framebuffer;
+	std::vector<u32> framebuffer;
 
 	int layer = 0;
 };
@@ -264,7 +264,7 @@ struct ColorMathLayer {
 	bool window2_inverted = false;;
 	bool window2_enabled = false;
 
-	Byte mask_logic = 0x00;
+	u8 mask_logic = 0x00;
 
 	bool direct_colour_mode = false; // Relevant for 8bpp! NEED TO ADD THIS STILL!
 	bool addend = false; // 0 = fixed colour, 1 = subscreen
@@ -272,20 +272,20 @@ struct ColorMathLayer {
 	bool backdrop_colour_math_enabled = false;
 	bool half_colour_math = false;
 
-	Byte sub_screen_transparent_region = 0x00;
-	Byte main_screen_black_region = 0x00;
+	u8 sub_screen_transparent_region = 0x00;
+	u8 main_screen_black_region = 0x00;
 
 	// Fixed colour
-	Byte red = 0x00;
-	Byte green = 0x00;
-	Byte blue = 0x00;
+	u8 red = 0x00;
+	u8 green = 0x00;
+	u8 blue = 0x00;
 
 	bool operator_type = false; // 0 = add, 1 = subtract
 };
 
 struct Window {
-	Byte left_position = 0x00;
-	Byte right_position = 0x00;
+	u8 left_position = 0x00;
+	u8 right_position = 0x00;
 };
 
 struct Mode7 {
@@ -294,26 +294,26 @@ struct Mode7 {
 	bool non_tilemap_fill = false;
 	bool tilemap_repeat = false;
 
-	int16_t m7hofs = 0x00;
-	int16_t m7vofs = 0x00;
-	Byte latch = 0x00;
+	i16 m7hofs = 0x00;
+	i16 m7vofs = 0x00;
+	u8 latch = 0x00;
 
-	uint32_t mpy = 0x00;
-	int8_t last_m7b = 0x00;
+	u32 mpy = 0x00;
+	i8 last_m7b = 0x00;
 
-	int16_t m7a = 0x00;
-	int16_t m7b = 0x00;
-	int16_t m7c = 0x00;
-	int16_t m7d = 0x00;
-	int16_t m7x = 0x00;
-	int16_t m7y = 0x00;
+	i16 m7a = 0x00;
+	i16 m7b = 0x00;
+	i16 m7c = 0x00;
+	i16 m7d = 0x00;
+	i16 m7x = 0x00;
+	i16 m7y = 0x00;
 };
 
 // BG fetching optimisation structs
 
 struct DecodedRow {
 	bool valid = false;
-	std::array<Byte, 8> data {}; // Important note to self: this contains colour indices, not actual colours!
+	std::array<u8, 8> data {}; // Important note to self: this contains colour indices, not actual colours!
 };
 
 struct DecodedTile {

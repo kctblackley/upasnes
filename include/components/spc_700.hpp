@@ -13,33 +13,33 @@ enum class APUStubState {
 struct SPCTimer {
 	bool enabled = false;
 
-	Byte target = 0;
-	Byte output = 0;
+	u8 target = 0;
+	u8 output = 0;
 
-	uint16_t divider_counter = 0;
-	uint16_t internal_counter = 0;
+	u16 divider_counter = 0;
+	u16 internal_counter = 0;
 };
 
 class SPC700 final : public CPU {
 public:
 	SPC700();
 
-	void add_cycles(CycleCount cycles) override;
+	void add_cycles(i64 cycles) override;
 
 	void run_half_cycle();
-	void accumulate_dsp(CycleCount delta);
+	void accumulate_dsp(i64 delta);
 	void tick_component() override;
-	CycleCount get_cycle() override;
-	TickCount get_tick() override;
+	i64 get_cycle() override;
+	i64 get_tick() override;
 
 	void reset() override;
 	void initialise() override;
 	
-	Byte communication_read(SNESAddress addr) override {
+	u8 communication_read(SNESAddress addr) override {
 		return spc_to_cpu_ports[addr.offset & 3];
 	}
 
-	void communication_write(SNESAddress addr, Byte value) override {
+	void communication_write(SNESAddress addr, u8 value) override {
 		cpu_to_spc_ports[addr.offset & 3] = value;
 	}
 
@@ -47,10 +47,10 @@ public:
 		bus->close_audio();
 	}
 
-	Byte read(Address addr) override {
+	u8 read(u32 addr) override {
 		cycle++;
 		if (addr >= 0xFD && addr <= 0xFF) {
-			Byte value = timers[addr - 0xFD].output;
+			u8 value = timers[addr - 0xFD].output;
 			timers[addr - 0xFD].output = 0;
 			return value;
 		}
@@ -63,7 +63,7 @@ public:
 		return bus->read(addr);
 	}
 
-	void write(Address addr, Byte value) override {
+	void write(u32 addr, u8 value) override {
 		cycle++;
 		if (addr >= 0xFA && addr <= 0xFC) {
 			timers[addr - 0xFA].target = value;
@@ -119,7 +119,7 @@ public:
 
 	    timer.internal_counter++;
 
-	    uint16_t target = (timer.target == 0) ? 256 : timer.target;
+	    u16 target = (timer.target == 0) ? 256 : timer.target;
 
 	    if (timer.internal_counter >= target) {
 	        timer.internal_counter = 0;
@@ -141,23 +141,23 @@ public:
 	bool get_flag_Z() { return (regs.P >> 1) & 0b1;  }
 	bool get_flag_C() { return  regs.P       & 0b1;  }
 
-	void set_flag_N(Byte value) {
+	void set_flag_N(u8 value) {
 		condition = ( ( (value >> 7) & 0b1 ) == 1);
 		regs.P = condition ? set_bit(regs.P, 7) : clear_bit(regs.P, 7); 
 	}
 
-	void set_flag_V(Byte value) { return; }
-	void set_flag_P(Byte value) { return; }
-	void set_flag_X(Byte value) { return; }
-	void set_flag_H(Byte value) { return; }
-	void set_flag_I(Byte value) { return; }
+	void set_flag_V(u8 value) { return; }
+	void set_flag_P(u8 value) { return; }
+	void set_flag_X(u8 value) { return; }
+	void set_flag_H(u8 value) { return; }
+	void set_flag_I(u8 value) { return; }
 
-	void set_flag_Z(Word value) {
+	void set_flag_Z(u16 value) {
 		condition = (value == 0);
 		regs.P = condition ? set_bit(regs.P, 1) : clear_bit(regs.P, 1); 
 	}
 
-	void set_flag_C(Byte value) { return; }
+	void set_flag_C(u8 value) { return; }
 
 	void set_flag_N() { regs.P = set_bit(regs.P, 7); }
 	void set_flag_V() { regs.P = set_bit(regs.P, 6); }
@@ -182,9 +182,9 @@ public:
 	bool get_flag_D() { return false; }
 	bool get_flag_B() { return false; }
 
-	void set_flag_M(Byte value) { return; }
-	void set_flag_D(Byte value) { return; }
-	void set_flag_B(Byte value) { return; }
+	void set_flag_M(u8 value) { return; }
+	void set_flag_D(u8 value) { return; }
+	void set_flag_B(u8 value) { return; }
 
 	void set_flag_M() { return; }
 	void set_flag_D() { return; }
@@ -208,11 +208,11 @@ public:
 		bus->reset_test_memory();
 	}
 
-	Byte test_peek(Address addr) override {
+	u8 test_peek(u32 addr) override {
 		return bus->read(addr);
 	}
 
-	void test_poke(Address addr, Byte value) override {
+	void test_poke(u32 addr, u8 value) override {
 		bus->write(addr, value);
 	}
 
@@ -239,17 +239,17 @@ public:
 		sdsp_cycle_constant = spc_cycle_constant * 32.0;
 	}
 private:
-	Byte trace_read(Address addr) const;
-	std::string trace_operands(Byte opcode, Address pc) const;
+	u8 trace_read(u32 addr) const;
+	std::string trace_operands(u8 opcode, u32 pc) const;
 
 	std::unique_ptr<APUBus> bus;
 
-	Byte cpu_to_spc_ports[4] {};
-	Byte spc_to_cpu_ports[4] {};
+	u8 cpu_to_spc_ports[4] {};
+	u8 spc_to_cpu_ports[4] {};
 
-	CycleCount cycle; 
-	CycleCount instruction_cycle; 
-	TickCount tick;
+	i64 cycle; 
+	i64 instruction_cycle; 
+	i64 tick;
 
 	double spc_cycle_constant = MASTER_CLOCK_NTSC / 1024000.0;
 	double sdsp_cycle_constant = spc_cycle_constant * 32.0;
@@ -258,7 +258,7 @@ private:
 
 	bool ipl_rom_enabled = false;
 
-	std::array<Byte, 64> ipl_rom {};
+	std::array<u8, 64> ipl_rom {};
 	SPCTimer timers[3];
 
 	int delay_cycles = 0;

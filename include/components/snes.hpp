@@ -34,5 +34,5 @@ private:
 	PPU* ppu = nullptr;
 	SPC700* spc_700 = nullptr;
 
-	CycleCount master_cycle;
+	i64 master_cycle;
 };

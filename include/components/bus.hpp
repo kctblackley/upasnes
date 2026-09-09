@@ -16,7 +16,7 @@ class SNES;
 
 class Bus {
 public:
-	using WaitCallback = std::function<void(CycleCount cycles)>;
+	using WaitCallback = std::function<void(i64 cycles)>;
 
 	Bus();
 	~Bus();
@@ -33,7 +33,7 @@ public:
 		return cartridge->has_coprocessor();
 	}
 
-	CycleCount get_coprocessor_cycle() {
+	i64 get_coprocessor_cycle() {
 		return cartridge->get_coprocessor_cycle();
 	}
 	
@@ -45,25 +45,25 @@ public:
 	Component* system_area_component(SNESAddress address);
 	Component* route_to_component(SNESAddress address);
 
-	CycleCount component_penalty(SNESAddress address);
+	i64 component_penalty(SNESAddress address);
 
-	void write(Address addr, Byte value, bool is_dma = false);
-	Byte read(Address addr, bool is_dma = false);
+	void write(u32 addr, u8 value, bool is_dma = false);
+	u8 read(u32 addr, bool is_dma = false);
 
 	void load_cartridge(const std::string& directory, Ricoh5A22* ricoh, const std::string& game_name);
 
 	void enable_test_mode();
 	void disable_test_mode();
 	void reset_test_memory();
-	Byte test_peek(Address addr);
-	void test_poke(Address addr, Byte value);
+	u8 test_peek(u32 addr);
+	void test_poke(u32 addr, u8 value);
 
 	void connect_cpu_to_cartridge(Ricoh5A22* cpu);
 
-	Byte get_open_bus();
-	void set_open_bus(Byte value);
+	u8 get_open_bus();
+	void set_open_bus(u8 value);
 
-	bool is_cartridge_mapped(Address addr);
+	bool is_cartridge_mapped(u32 addr);
 
 	void set_fastrom(bool fastrom_enabled) {
 		cartridge->set_fastrom(fastrom_enabled);
@@ -81,10 +81,10 @@ public:
 
 private:
 	WaitCallback callback;
-	Byte data_bus;
+	u8 data_bus;
 
 	bool test_mode = false;
-	std::unordered_map<Address, Byte> test_memory;
+	std::unordered_map<u32, u8> test_memory;
 
 	std::unique_ptr<OpenBus> open_bus;
 	std::unique_ptr<WRAM> wram;

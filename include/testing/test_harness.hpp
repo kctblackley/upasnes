@@ -3,6 +3,6 @@
 
 #include "common.hpp"
 
-bool test(const std::string& opcode_name, Byte opcode_value);
-bool test_spc700(const std::string& opcode_name, Byte opcode_value);
+bool test(const std::string& opcode_name, u8 opcode_value);
+bool test_spc700(const std::string& opcode_name, u8 opcode_value);
 

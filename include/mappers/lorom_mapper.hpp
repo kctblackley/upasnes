@@ -11,7 +11,7 @@ public:
 	}
 
 protected:
-	std::optional<Address> rom_idx(SNESAddress address) const {
+	std::optional<u32> rom_idx(SNESAddress address) const {
 		if (address.bank >= 0x40 && rom.size() <= 2 * MEGABYTE && has_superfx) {
 	        return ((address.bank - 0x40) << 16) | address.offset;
 	    }
@@ -21,7 +21,7 @@ protected:
 		return ((address.bank & 0x7F) << 15) | (address.offset & 0x7FFF);
 	}
 
-	std::optional<Address> sram_idx(SNESAddress address) const {
+	std::optional<u32> sram_idx(SNESAddress address) const {
 		bool sram_bank =
 		    (address.bank >= 0x70 && address.bank <= 0x7D) ||
 		    (address.bank >= 0xF0 && address.bank <= 0xFF);

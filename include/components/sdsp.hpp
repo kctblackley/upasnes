@@ -7,11 +7,11 @@
 #include <numbers>
 
 constexpr double pi = std::numbers::pi;
-using Sample = int32_t;
+using Sample = i32;
 
 constexpr int ENVELOPE_COUNTER_RANGE = 30720;
 
-constexpr uint32_t envelope_period_table[32] = {
+constexpr u32 envelope_period_table[32] = {
     ENVELOPE_COUNTER_RANGE + 1, 2048, 1536,
     1280, 1024, 768,
     640,  512,  384,
@@ -25,7 +25,7 @@ constexpr uint32_t envelope_period_table[32] = {
     2,    1
 };
 
-constexpr uint32_t envelope_offset_table[32] = {
+constexpr u32 envelope_offset_table[32] = {
     0,   0,    1040,
     536, 0,    1040,
     536, 0,    1040,
@@ -68,7 +68,7 @@ public:
 		gauss.oldest = 0;
 	}
 
-	Byte read(Byte reg) {
+	u8 read(u8 reg) {
 		switch (reg) {
 		case 0x0: return voll;   break;
 		case 0x1: return volr;   break;
@@ -84,10 +84,10 @@ public:
 		return 0x00;
 	}
 
-	void write(Byte reg, Byte value) {
+	void write(u8 reg, u8 value) {
 		switch (reg) {
-		case 0x0: voll   = (int8_t)value; break;
-		case 0x1: volr   = (int8_t)value; break;
+		case 0x0: voll   = (i8)value; break;
+		case 0x1: volr   = (i8)value; break;
 		case 0x2: pitchl =         value; break;
 		case 0x3: pitchr =  value & 0x3F; break;
 		case 0x4: srcn   =         value; break;
@@ -139,7 +139,7 @@ public:
 		}
 	}
 
-	void key_on(Byte dir) {
+	void key_on(u8 dir) {
 		directory = dir * 0x100;
 		entry = (directory + srcn * 4) & 0xFFFF;
 		current_brr_address = (mem_read(entry + 1) << 8) | mem_read(entry + 0);
@@ -205,8 +205,8 @@ public:
 	}
 
 	void tick(Sample modulation = 0, Sample noise = 0);
-	Byte mem_read(Word address);
-	void mem_write(Word address, Byte value);
+	u8 mem_read(u16 address);
+	void mem_write(u16 address, u8 value);
 
 	bool is_echo_enabled() {
 		return echo_enabled;
@@ -223,49 +223,49 @@ private:
 
 	int id = 0;
 
-	int8_t voll = 0x00;
-	int8_t volr = 0x00;
+	i8 voll = 0x00;
+	i8 volr = 0x00;
 
-	Byte pitchl =  0x00;
-	Byte pitchr = 0x00;
+	u8 pitchl =  0x00;
+	u8 pitchr = 0x00;
 
-	Byte srcn = 0x00;
+	u8 srcn = 0x00;
 
-	Byte adsr1 = 0x00;
-	Byte adsr2 = 0x00;
+	u8 adsr1 = 0x00;
+	u8 adsr2 = 0x00;
 
 	bool is_adsr = false;
-	Byte decay_rate = 0x00;
-	Byte attack_rate = 0x00;
-	Word attack_step = 0x00;
-	Word sustain_boundary = 0x00;
-	Byte sustain_rate = 0x00;
-	Byte release_rate = 31;
+	u8 decay_rate = 0x00;
+	u8 attack_rate = 0x00;
+	u16 attack_step = 0x00;
+	u16 sustain_boundary = 0x00;
+	u8 sustain_rate = 0x00;
+	u8 release_rate = 31;
 
-	Byte gain = 0x00; // how this is written depends on whether bit 7 is set/clear
-	Byte gain_value = 0x00;
-	Byte gain_mode  = 0x00;
+	u8 gain = 0x00; // how this is written depends on whether bit 7 is set/clear
+	u8 gain_value = 0x00;
+	u8 gain_mode  = 0x00;
 
 	int envelope = 0;
-	uint32_t envelope_tick = 0;
+	u32 envelope_tick = 0;
 	EnvelopeState envelope_state = EnvelopeState::NONE;
 
-	uint32_t fire_countdown[32] = {};
+	u32 fire_countdown[32] = {};
 
-	Byte envx = 0x00;
-	int8_t outx =  0x00;
+	u8 envx = 0x00;
+	i8 outx =  0x00;
 
 	bool endx_flag = false;
 
 	// BRR decoding
-	Word directory;
-	Word entry;
-	Word current_brr_address;
-	Word next_brr_address;
-	Word loop_brr_address;
+	u16 directory;
+	u16 entry;
+	u16 current_brr_address;
+	u16 next_brr_address;
+	u16 loop_brr_address;
 
-	Byte brr_header = 0;
-	Byte brr_position = 0;
+	u8 brr_header = 0;
+	u8 brr_position = 0;
 	bool looping = false;
 	bool active = false;
 
@@ -276,15 +276,15 @@ private:
 
 	Sample final_sample = 0;
 
-	uint16_t sample_index  = 16;
-	uint16_t nibble_index  = 16;
-	uint32_t pitch_counter = 0;
+	u16 sample_index  = 16;
+	u16 nibble_index  = 16;
+	u32 pitch_counter = 0;
 
 	std::array<Sample, 16> decoded_samples {};
 
-	Byte header = 0x00;
-	Byte shift = 0x00;
-	Byte filter = 0x00;
+	u8 header = 0x00;
+	u8 shift = 0x00;
+	u8 filter = 0x00;
 
 	bool loop_flag = false;
 	bool end_flag = false;
@@ -314,7 +314,7 @@ public:
 	}
 
 	// For DSP registers
-	void write(Byte address, Byte value) {
+	void write(u8 address, u8 value) {
 		if (address & 0x80) {
 			return;
 		}
@@ -330,10 +330,10 @@ public:
 		}
 
 		switch (address) {
-		case 0x0C: mvoll = (int8_t)value; break;
-		case 0x1C: mvolr = (int8_t)value; break;
-		case 0x2C: evoll = (int8_t)value; break;
-		case 0x3C: evolr = (int8_t)value; break;
+		case 0x0C: mvoll = (i8)value; break;
+		case 0x1C: mvolr = (i8)value; break;
+		case 0x2C: evoll = (i8)value; break;
+		case 0x3C: evolr = (i8)value; break;
 		case 0x4C:
 			kon = value;
 			kon_pending = kon_pending | value;
@@ -354,10 +354,10 @@ public:
 				v.clear_endx();
 			}
 			break;
-		case 0x0D: efb = (int8_t)value; break;
+		case 0x0D: efb = (i8)value; break;
 		case 0x2D: {
 			pmon = value;
-			Byte tmp = pmon;
+			u8 tmp = pmon;
 			for (int v = 0; v < 8; v++) {
 				voices[v].pmon(tmp & 1);
 				tmp = tmp >> 1;
@@ -366,7 +366,7 @@ public:
 		}
 		case 0x3D: {
 			non = value;
-			Byte tmp = non;
+			u8 tmp = non;
 			for (int v = 0; v < 8; v++) {
 				voices[v].non(tmp & 1);
 				tmp = tmp >> 1;
@@ -375,7 +375,7 @@ public:
 		}
 		case 0x4D: {
 			eon = value;
-			Byte tmp = eon;
+			u8 tmp = eon;
 			for (int v = 0; v < 8; v++) {
 				voices[v].eon(tmp & 1);
 				tmp = tmp >> 1;
@@ -391,7 +391,7 @@ public:
 		registers[address & 0x7F] = value;
 	}
 
-	Byte read(Byte address) {
+	u8 read(u8 address) {
 		// Voice registers
 		if (address < 0x80 && (address & 0x0F) <= 0x09) {
 			return voices[(address & 0xF0) >> 4].read(address & 0xF);
@@ -460,10 +460,11 @@ public:
 			if (kon_delay[v] > 0) {
 				kon_delay[v]--;
 
-				if (kon_delay[v] == 0) {
+				//if (kon_delay[v] == 0) {
 					voices[v].key_on(dir);
 					kon_delay_active &= ~(1 << v);
-				}
+					kon_delay[v] = 0;
+				//}
 			}
 		}
 	}
@@ -484,8 +485,8 @@ public:
 	void tick();
 
 	// For reading/writing ARAM
-	void mem_write(Word address, Byte value);
-	Byte mem_read(Word address);
+	void mem_write(u16 address, u8 value);
+	u8 mem_read(u16 address);
 
 	bool above_half_capacity() {
 		return audio_buffer.above_half_capacity();
@@ -499,21 +500,21 @@ public:
 
 	StereoSample output();
 
-	uint16_t echo_address() const {
-		return (static_cast<uint16_t>(esa) << 8) + (echo_index * 4);
+	u16 echo_address() const {
+		return (static_cast<u16>(esa) << 8) + (echo_index * 4);
 	}
 
 	StereoSample read_echo_sample() {
-		uint16_t address = echo_address();
+		u16 address = echo_address();
 
-		uint16_t left = (mem_read(address + 1) << 8) | mem_read(address + 0);
-		uint16_t right = (mem_read(address + 3) << 8) | mem_read(address + 2);
+		u16 left = (mem_read(address + 1) << 8) | mem_read(address + 0);
+		u16 right = (mem_read(address + 3) << 8) | mem_read(address + 2);
 
-		return { static_cast<int16_t>(left), static_cast<int16_t>(right) };
+		return { static_cast<i16>(left), static_cast<i16>(right) };
 	}
 
 	void write_echo_sample(StereoSample sample) {
-		uint16_t address = echo_address();
+		u16 address = echo_address();
 
 		mem_write(address + 0, sample.left & 0xFE);
 		mem_write(address + 1, sample.left >> 8);
@@ -522,7 +523,7 @@ public:
 		mem_write(address + 3, sample.right >> 8);
 	}
 
-	uint16_t echo_buffer_entries() const {
+	u16 echo_buffer_entries() const {
 		if (edl == 0) {
 			return 1;
 		}
@@ -548,76 +549,76 @@ public:
 	}
 
 	StereoSample process_fir() {
-		int16_t left = 0;
-		int16_t right = 0;
+		i16 left = 0;
+		i16 right = 0;
 
 		for (int i = 0; i < 7; i++) {
-			int32_t coefficient = fir[i];
+			i32 coefficient = fir[i];
 
-			left += ((int32_t)(echo_history[7 - i].left) * coefficient) >> 7;
-			right += ((int32_t)(echo_history[7 - i].right) * coefficient) >> 7;
+			left += ((i32)(echo_history[7 - i].left) * coefficient) >> 7;
+			right += ((i32)(echo_history[7 - i].right) * coefficient) >> 7;
 		}
 
-		int32_t coefficient7 = fir[7];
-		int32_t left_final = (int32_t)left + (((int32_t)echo_history[0].left * coefficient7) >> 7);
-		int32_t right_final = (int32_t)right + (((int32_t)echo_history[0].right * coefficient7) >> 7);
+		i32 coefficient7 = fir[7];
+		i32 left_final = (i32)left + (((i32)echo_history[0].left * coefficient7) >> 7);
+		i32 right_final = (i32)right + (((i32)echo_history[0].right * coefficient7) >> 7);
 
 		left_final = std::clamp(left_final, -32768, 32767);
 		right_final = std::clamp(right_final, -32768, 32767);
 		
-		return { (int16_t)(left_final), (int16_t)(right_final) };
+		return { (i16)(left_final), (i16)(right_final) };
 	}
 
 private:
 	APUBus* bus = nullptr;
 
 	std::array<Voice, 8> voices {};
-	std::array<Byte, 128> registers {}; // fallback (temporary)
-	std::array<int8_t, 8> fir {};
+	std::array<u8, 128> registers {}; // fallback (temporary)
+	std::array<i8, 8> fir {};
 	
 	// main volume (left and right)
-	int8_t mvoll = 0x00;
-	int8_t mvolr = 0x00;
+	i8 mvoll = 0x00;
+	i8 mvolr = 0x00;
 	
 	// echo volume (left and right)
-	int8_t evoll = 0x00;
-	int8_t evolr = 0x00;
+	i8 evoll = 0x00;
+	i8 evolr = 0x00;
 
 	// key on, key off
-	Byte kon = 0x00;
-	Byte koff = 0x00;
-	Byte kon_pending = 0x00;
-	Byte koff_pending = 0x00;
+	u8 kon = 0x00;
+	u8 koff = 0x00;
+	u8 kon_pending = 0x00;
+	u8 koff_pending = 0x00;
 
-	std::array<Byte, 8> kon_delay {};
-	Byte kon_delay_active = 0x00;
+	std::array<u8, 8> kon_delay {};
+	u8 kon_delay_active = 0x00;
 
-	Byte flg = 0xE0; // RMEN NNNN
+	u8 flg = 0xE0; // RMEN NNNN
 	bool soft_reset = true;
 	bool mute_all = true;
 	bool echo_disable = true;
-	Byte noise_frequency = 0x00;
+	u8 noise_frequency = 0x00;
 
-	Byte endx = 0x00; // end of sample flag for each channel
+	u8 endx = 0x00; // end of sample flag for each channel
 
-	int8_t efb = 0x00; // echo feedback
+	i8 efb = 0x00; // echo feedback
 
-	Byte pmon = 0x00; // enable pitch modulation
-	Byte non  = 0x00; // replace sample waveform with noise generator output
-	Byte eon  = 0x00; // send to echo unit
+	u8 pmon = 0x00; // enable pitch modulation
+	u8 non  = 0x00; // replace sample waveform with noise generator output
+	u8 eon  = 0x00; // send to echo unit
 
-	Byte dir = 0x00; // pointer to sample source directory page at $DD00
-	Byte esa = 0x00; // pointer to start of echo memory region at $EE00
-	Byte edl = 0x00; // echo delay time
+	u8 dir = 0x00; // pointer to sample source directory page at $DD00
+	u8 esa = 0x00; // pointer to start of echo memory region at $EE00
+	u8 edl = 0x00; // echo delay time
 
 	AudioBuffer audio_buffer;
 
-	uint16_t noise_lfsr = 0x7FFF;
-	uint32_t noise_counter = 0;
+	u16 noise_lfsr = 0x7FFF;
+	u32 noise_counter = 0;
 	Sample noise_sample = 0;
 
-	uint16_t echo_index = 0;
-	uint16_t echo_buffer_size = 1;
+	u16 echo_index = 0;
+	u16 echo_buffer_size = 1;
 	std::array<StereoSample, 8> echo_history {};
 
 };

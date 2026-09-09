@@ -33,7 +33,7 @@ SNES::SNES() : master_cycle(0) {
 	ppu->connect_renderer(renderer.get());
 	ppu->create_window();
 
-	bus->set_wait_callback([this](CycleCount cycles) {
+	bus->set_wait_callback([this](i64 cycles) {
 		ricoh_5a22->add_cycles(cycles);
 	});
 
@@ -50,10 +50,10 @@ void SNES::load_cartridge(const std::string& directory, const std::string& game_
 }
 
 void SNES::tick_snes() {
-	CycleCount cpu_cycle = ricoh_5a22->get_cycle();
-	CycleCount ppu_cycle = ppu->get_cycle();
-	CycleCount spc_cycle = spc_700->get_cycle();
-	CycleCount coprocessor_cycle = bus->get_coprocessor_cycle();
+	i64 cpu_cycle = ricoh_5a22->get_cycle();
+	i64 ppu_cycle = ppu->get_cycle();
+	i64 spc_cycle = spc_700->get_cycle();
+	i64 coprocessor_cycle = bus->get_coprocessor_cycle();
 	if (bus->has_coprocessor() && coprocessor_cycle <= spc_cycle && coprocessor_cycle <= cpu_cycle && coprocessor_cycle <= ppu_cycle) {
 		bus->tick_coprocessor();
 	} else if (spc_cycle <= cpu_cycle && spc_cycle <= ppu_cycle) {
@@ -72,11 +72,11 @@ void SNES::tick_snes() {
 }
 
 void SNES::sync_to_superfx() {
-	CycleCount coprocessor_cycle = bus->get_coprocessor_cycle();
+	i64 coprocessor_cycle = bus->get_coprocessor_cycle();
 	while (master_cycle < coprocessor_cycle) {
-		CycleCount cpu_cycle = ricoh_5a22->get_cycle();
-		CycleCount ppu_cycle = ppu->get_cycle();
-		CycleCount spc_cycle = spc_700->get_cycle();
+		i64 cpu_cycle = ricoh_5a22->get_cycle();
+		i64 ppu_cycle = ppu->get_cycle();
+		i64 spc_cycle = spc_700->get_cycle();
 		
 		coprocessor_cycle = bus->get_coprocessor_cycle();
 		
@@ -116,14 +116,14 @@ void SNES::run() {
 
 	// If unthrottled, this can reach 140+ frames per second
 
-	CycleCount prev_cpu_cycle = ricoh_5a22->get_cycle();
+	i64 prev_cpu_cycle = ricoh_5a22->get_cycle();
 
 	while (running) {
 		
 		tick_snes();
 
-		CycleCount new_cpu_cycle = ricoh_5a22->get_cycle();
-		CycleCount delta = new_cpu_cycle - prev_cpu_cycle;
+		i64 new_cpu_cycle = ricoh_5a22->get_cycle();
+		i64 delta = new_cpu_cycle - prev_cpu_cycle;
 		prev_cpu_cycle = new_cpu_cycle;
 		spc_700->accumulate_dsp(delta);
 

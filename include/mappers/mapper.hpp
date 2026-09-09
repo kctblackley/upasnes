@@ -14,10 +14,10 @@ class Mapper {
 public:
 	~Mapper();
 
-	Byte read(SNESAddress address);
-	void write(SNESAddress address, Byte value);
+	u8 read(SNESAddress address);
+	void write(SNESAddress address, u8 value);
 
-	void load_rom(std::vector<Byte> rom) {
+	void load_rom(std::vector<u8> rom) {
 		this->rom = rom;
 
 		// Non-power-of-two ROM support...
@@ -28,7 +28,7 @@ public:
 	    }
 	}
 
-	void load_sram(Byte ram_size, const std::string& game_name, CartridgeHardware* hardware = nullptr, CartridgeHeader* header = nullptr);
+	void load_sram(u8 ram_size, const std::string& game_name, CartridgeHardware* hardware = nullptr, CartridgeHeader* header = nullptr);
 
 	void connect_cpu(Ricoh5A22* cpu) {
 		std::cout << "CARTRIDGE LOADED...\n";
@@ -38,13 +38,13 @@ public:
 		}
 	}
 
-	Byte get_open_bus();
+	u8 get_open_bus();
 
 	size_t get_rom_size() {
 		return rom.size();
 	}
 
-	Byte get_from_rom(unsigned int index) {
+	u8 get_from_rom(unsigned int index) {
 		return rom[index % rom.size()];
 	}
 
@@ -59,8 +59,8 @@ protected:
 		std::cout << "SRAM size: " << sram.size() << "\n";
 	}
 
-	std::vector<Byte> rom;
-	std::vector<Byte> sram;
+	std::vector<u8> rom;
+	std::vector<u8> sram;
 
 	std::string game_name;
 	bool save_exists;
