@@ -40,8 +40,7 @@ void Voice::decode_brr_block() {
 		}
 
 		if (shift <= 12) {
-			sample = sample << shift;
-			sample = sample >> 1;
+			sample = (sample << shift) >> 1;
 		} else {
 			sample = (sample < 0) ? -2048 : 2048;
 		}
@@ -85,8 +84,8 @@ StereoSample Voice::output() {
 	}
 
 	return {
-		static_cast<i16>(final_sample * voll / 128),
-		static_cast<i16>(final_sample * volr / 128)
+		static_cast<i16>( (final_sample * voll) >> 6),
+		static_cast<i16>( (final_sample * volr) >> 6)
 	};
 }
 

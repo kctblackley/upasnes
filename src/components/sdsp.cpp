@@ -70,6 +70,9 @@ StereoSample SDSP::output() {
 	left = std::clamp(mixed_left, -32768, 32767);
 	right = std::clamp(mixed_right, -32768, 32767);
 
+	left = left ^ 0xFFFF;
+	right = right ^ 0xFFFF;
+
 	return {
 		(i16)left,
 		(i16)right

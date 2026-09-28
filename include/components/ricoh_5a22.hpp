@@ -129,7 +129,7 @@ public:
 		if (addr.offset == TIMEUP_ADDRESS) {
 			u8 value = mregs.TIMEUP;
 			mregs.TIMEUP = mregs.TIMEUP & 0x7F;
-			irq_line = false;
+			hv_irq_pending = false;
 			return value;
 		}
 
@@ -239,7 +239,11 @@ public:
 
 		// Interrupts
 		if (addr.offset == NMITIMEN_ADDRESS) {
+			if ((mregs.NMITIMEN & 0x30) != (value & 0x30)) {
+				ppu->irq_condition_met = false;
+			}
 			u8 irq_bits_before = mregs.NMITIMEN & 0x30;
+			bool nmi_was_enabled = nmi_enabled;
 			nmi_enabled = (((value >> 7) & 0b1) == 1);
 			auto_read_enabled = ((value & 0b1) == 1);
 			if (auto_read_enabled) {
@@ -250,19 +254,23 @@ public:
 			this->irq_mode = (value >> 4) & 3;
 			ppu->irq_mode = this->irq_mode;
 			mregs.NMITIMEN = value;
+
+			if (!nmi_was_enabled && nmi_enabled && (mregs.RDNMI & 0x80)) {
+				nmi_line = true;
+			}
 			
 			if (irq_bits_before != 0 && (value & 0x30) == 0) {
 				mregs.TIMEUP = mregs.TIMEUP & ~0x80;
-				irq_line = false;
+				hv_irq_pending = false;
 			}
 		}
 		if (addr.offset == HTIMEL_ADDRESS) {
 			mregs.HTIMEL = value;
-			ppu->h_time_target = (mregs.HTIMEH << 8) | mregs.HTIMEL;
+			ppu->h_time_target = ((mregs.HTIMEH & 1) << 8) | mregs.HTIMEL;
 		}
 		if (addr.offset == HTIMEH_ADDRESS) {
 			mregs.HTIMEH = value;
-			ppu->h_time_target = (mregs.HTIMEH << 8) | mregs.HTIMEL;
+			ppu->h_time_target = ((mregs.HTIMEH & 1) << 8) | mregs.HTIMEL;
 		}
 		if (addr.offset == VTIMEL_ADDRESS) {
 			mregs.VTIMEL = value;
@@ -300,15 +308,15 @@ public:
 
 	void signal_irq() {
 		mregs.TIMEUP = mregs.TIMEUP | 0x80;
-		irq_line = true;
+		hv_irq_pending = true;
 	}
 
 	void signal_superfx_irq() {
-		irq_line = true;
+		superfx_irq_pending = true;
 	}
 
 	void unsignal_superfx_irq() {
-		irq_line = false;
+		superfx_irq_pending = false;
 	}
 
 	void set_hvbjoy_flag(u8 bit_mask, bool set) {
@@ -326,7 +334,7 @@ public:
 	void poll_interrupts() override;
 
 	bool interrupt_pending() {
-	    return nmi_line || (irq_line && !get_flag_I());
+	    return nmi_line || ((hv_irq_pending || superfx_irq_pending) && !get_flag_I());
 	}
 
 	bool get_flag_N() { return (regs.P >> 7) & 0b1; }
@@ -444,7 +452,8 @@ private:
 
 	u8 irq_mode;
 	bool nmi_line = false;
-	bool irq_line = false;
+	bool hv_irq_pending = false;
+	bool superfx_irq_pending = false;
 	bool nmi_enabled = false;
 	bool auto_read_enabled = false;
 	bool fastrom_enabled = false;

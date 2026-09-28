@@ -36,15 +36,15 @@ void SuperFX::tick_component() {
    }
    instruction(peekpipe());
 
-   if (r[14].modified) {
-      r[14].modified = false;
-      update_rom_buffer();
-   }
-
    if (r[15].modified) {
       r[15].modified = false;
+      cache_finish();
    } else {
       r[15]++;
+      if (r[14].modified) {
+         r[14].modified = false;
+         update_rom_buffer();
+      }
    }
 }
 
@@ -618,13 +618,8 @@ u8 SuperFX::read_opcode(u16 address) {
    u16 offset = address - cbr;
    if (offset < 512) {
       if (!cache.valid[offset >> 4]) {
-         unsigned int dp = offset & 0xFFF0;
-         unsigned int sp = (pbr << 16) + ((cbr + dp) & 0xFFF0);
-         for (int n = 0; n < 16; n++) {
-            step(clsr ? 5 : 6);
-            cache.buffer[dp++] = read(sp++);
-         }
-         cache.valid[offset >> 4] = true;
+         cache.partial = (offset & 0xFFF0) | (cache.partial & 0x000F);
+         return load_cache(cache.partial, offset);
       } else {
          step(clsr ? 1 : 2);
       }
@@ -657,6 +652,7 @@ u8 SuperFX::pipe() {
 }
 
 void SuperFX::flush_cache() {
+   cache.partial = cache_flushed;
    for (int n = 0; n < 32; n++) {
       cache.valid[n] = false;
    }
@@ -1133,5 +1129,31 @@ void SuperFX::snes_side_write(SNESAddress address, u8 data) {
          write_ram(address.offset, data);
          return;
       }
+   }
+}
+
+u8 SuperFX::load_cache(unsigned int dp, unsigned int target) {
+   unsigned int sp = (pbr << 16) + (u16)(cbr + dp);
+   if (pbr <= 0x5F) {
+      sync_rom_buffer();
+   } else {
+      sync_ram_buffer();
+   }
+   do {
+      step(clsr ? 5 : 6);
+      cache.buffer[dp++] = read(sp++);
+   } while (dp <= target);
+   if (cache.partial != cache_flushed) {
+      cache.partial = dp;
+      if ((target & 15) == 15) {
+         cache.valid[target >> 4] = true;
+      }
+   }
+   return cache.buffer[target];
+}
+
+void SuperFX::cache_finish() {
+   if (cache.partial & 15) {
+      load_cache(cache.partial, cache.partial | 15);
    }
 }

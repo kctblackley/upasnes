@@ -36,7 +36,7 @@ public:
 
 		// Main window
 		window = SDL_CreateWindow(
-			"SNES Emulator",
+			"Upasnes",
 			screen_width,
 			screen_height,
 			SDL_WINDOW_RESIZABLE
@@ -414,6 +414,12 @@ public:
 		SDL_DestroyWindow(oam_window);
 		oam_window = nullptr;
 		closed = true;
+	}
+
+	void add_game_title(const std::string& title) {
+		std::string emulator_title = "UpaSNES - ";
+		std::string full_title = emulator_title + title;
+		SDL_SetWindowTitle(window, full_title.c_str());
 	}
 
 	bool running = true;

@@ -65,6 +65,8 @@ struct Bit {
 	}
 };
 
+static constexpr u16 cache_flushed = 0xFFF0;
+
 class SuperFX {
 public:
 	/*D*/
@@ -259,6 +261,17 @@ public:
 	u8 snes_side_read(SNESAddress address);
 	void snes_side_write(SNESAddress address, u8 data);
 
+	u8 load_cache(unsigned int dp, unsigned int target);
+	void cache_finish();
+
+	std::vector<u8> get_gpram() {
+		return gpram;
+	}
+
+	void load_gpram(std::vector<u8> gpram) {
+		this->gpram = gpram;
+	}
+
 private:
 	double cycle = 0;
 	double cycles_per_clock = 1;
@@ -444,6 +457,7 @@ private:
 	struct Cache {
 		u8 buffer[512];
 		bool valid[32];
+		u16 partial;
 	} cache;
 
 	// Pixel Cache

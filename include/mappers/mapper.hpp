@@ -52,6 +52,12 @@ public:
 		has_superfx = true;
 	}
 
+	std::vector<u8> get_gpram();
+
+	void connect_superfx(SuperFX* superfx) {
+		this->superfx = superfx;
+	}
+
 protected:
 
 	void log_info() {
@@ -66,6 +72,7 @@ protected:
 	bool save_exists;
 
 	Ricoh5A22* cpu = nullptr;
+	SuperFX* superfx = nullptr;
 
 	bool has_superfx = false;
 

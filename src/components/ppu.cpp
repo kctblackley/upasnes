@@ -1,3 +1,5 @@
+// Current work is to turn this into a dot renderer. The previous working version has been saved in BACKUPS
+
 #include "ppu.hpp"
 #include "dma.hpp"
 #include "bus.hpp"
@@ -204,8 +206,9 @@ u16 PPU::get_tile(BG& bg, int x, int y) {
 	x = x & 0x3FF;
 	y = y & 0x3FF;
 
-	int tile_x = x >> 3;
-	int tile_y = y >> 3;
+	int tile_shift = bg.character_size ? 4 : 3;
+	int tile_x = x >> tile_shift;
+	int tile_y = y >> tile_shift;
 
 	int map_width_tiles = bg.horizontal_tilemap_count ? 64 : 32;
 	int map_height_tiles = bg.vertical_tilemap_count ? 64 : 32;
@@ -990,6 +993,10 @@ void PPU::tick_component() {
 	// MAIN PPU STUFF
 
 	hcounter += 1;
+
+	if (hcounter == CPU_PAUSE && bus) {
+		bus->wram_refresh_pause();
+	}
 
 	if (hcounter == DOTS_PER_LINE) {
 		hcounter = 0;

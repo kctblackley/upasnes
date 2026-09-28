@@ -79,6 +79,10 @@ public:
 		return cartridge->get_region();
 	}
 
+	std::string get_game_title() const {
+		return cartridge->get_game_title();
+	}
+
 private:
 	WaitCallback callback;
 	u8 data_bus;

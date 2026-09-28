@@ -46,6 +46,7 @@ void SNES::load_cartridge(const std::string& directory, const std::string& game_
 	Region region = bus->get_cartridge_region();
 	ppu->set_region(region);
 	spc_700->set_region(region);
+	renderer->add_game_title(bus->get_game_title());
 	initialise();
 }
 

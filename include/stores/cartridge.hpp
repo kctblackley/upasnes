@@ -131,6 +131,10 @@ public:
 		return region_from_header_byte(header.region);
 	}
 
+	std::string get_game_title() const {
+		return header.title;
+	}
+
 	void write(SNESAddress address, u8 value) override {
 		if (hardware.coprocessor == Coprocessor::SuperFX) {
 			if (superfx.handles(address)) {
@@ -279,6 +283,14 @@ public:
 		header = best->h;
 
 		detect_hardware(header, hardware, rom);
+
+		std::visit(
+		    [&](auto& m)
+		    {
+		        m.connect_superfx(&superfx);
+		    },
+		    mapper
+		);
 
 		std::visit(
 		    [&](auto& m)

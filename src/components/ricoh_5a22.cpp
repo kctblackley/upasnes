@@ -53,7 +53,7 @@ void Ricoh5A22::poll_interrupts() {
 		instruction_cycle = 0;
 		was_interrupt = true;
 		interrupt_type = false;
-	} else if (irq_line && !get_flag_I()) {
+	} else if ((hv_irq_pending || superfx_irq_pending) && !get_flag_I()) {
 		BufferOpCode = OPCODE_IRQ;
 		instruction_cycle = 0;
 		was_interrupt = true;

@@ -36,11 +36,21 @@ void Mapper<MapperT>::load_sram(u8 ram_size, const std::string& game_name, Cartr
 
 		if (save_exists) {
 			std::ifstream file(save_directory, std::ios::binary);
-			
-			file.read(
-				reinterpret_cast<char*>(sram.data()),
-				sram.size()
-			);
+
+			if (has_superfx) {
+				std::vector<u8> gpram;
+				gpram.assign(get_gpram().size(), 0);
+				file.read(
+					reinterpret_cast<char*>(gpram.data()),
+					gpram.size()
+				);
+				superfx->load_gpram(gpram);
+			} else {
+				file.read(
+					reinterpret_cast<char*>(sram.data()),
+					sram.size()
+				);
+			}
 		}
 	}
 }
@@ -72,10 +82,27 @@ Mapper<MapperT>::~Mapper() {
 		return;
 	}
 
-	file.write(
-		reinterpret_cast<const char*>(sram.data()),
-		sram.size()
-	);
+	if (has_superfx) {
+		std::vector<u8> gpram = get_gpram();
+		file.write(
+			reinterpret_cast<const char*>(gpram.data()),
+			gpram.size()
+		);
+	} else {
+		file.write(
+			reinterpret_cast<const char*>(sram.data()),
+			sram.size()
+		);
+	}
+}
+
+template <class MapperT>
+std::vector<u8> Mapper<MapperT>::get_gpram() {
+	if (superfx) {
+		return superfx->get_gpram();
+	} else {
+		return {};
+	}
 }
 
 template class Mapper<LoROM>;
